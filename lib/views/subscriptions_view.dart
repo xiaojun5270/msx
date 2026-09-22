@@ -140,9 +140,9 @@ class _SubscriptionsViewState extends State<SubscriptionsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('订阅', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
@@ -575,9 +575,9 @@ class _SubscriptionDetailViewState extends State<SubscriptionDetailView> {
   Widget build(BuildContext context) {
     final sub = _sub;
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text(sub?.title ?? '订阅详情',
             maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),

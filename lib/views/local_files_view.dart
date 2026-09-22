@@ -85,9 +85,9 @@ class _LocalFilesViewState extends State<LocalFilesView> {
   Widget build(BuildContext context) {
     final ui = context.read<UIStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text(_title, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [

@@ -113,7 +113,8 @@ class _MobileShellState extends State<MobileShell> {
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: MX.ink,
+          backgroundColor: Colors.transparent,
+          extendBody: true,
           body: IndexedStack(
             index: _order.indexOf(_tab),
             children: [for (final t in _order) _tabNavigator(t)],

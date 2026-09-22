@@ -53,9 +53,9 @@ class _GenresViewState extends State<GenresView> {
   Widget build(BuildContext context) {
     final ui = context.read<UIStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('曲风', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
@@ -285,9 +285,9 @@ class _GenreDetailViewState extends State<GenreDetailView> {
     final classic = r?.classicAlbums ?? [];
     final artists = r?.artists ?? [];
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text(r?.genre?.name ?? '曲风推荐', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
@@ -530,9 +530,9 @@ class _DailyViewState extends State<DailyView> {
   Widget build(BuildContext context) {
     final player = context.read<PlayerStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('每日歌曲', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
@@ -601,9 +601,9 @@ class _ExplorePlaylistsViewState extends State<ExplorePlaylistsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('歌单', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
@@ -697,9 +697,9 @@ class _ExploreAlbumsViewState extends State<ExploreAlbumsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('新发行', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
@@ -845,9 +845,9 @@ class _FavoritesViewState extends State<FavoritesView> {
     final player = context.read<PlayerStore>();
     final ui = context.read<UIStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('收藏', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [

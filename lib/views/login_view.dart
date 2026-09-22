@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
+import '../theme/glass.dart';
 import '../theme/theme.dart';
 
 /// The sign-in / initial-setup screen. Mirrors Swift `LoginView` (the compact
@@ -198,14 +199,11 @@ class _LoginViewState extends State<LoginView> {
 
   Widget _signInCard(SessionStore session, ThemeAccent accent) {
     final setup = session.setupRequired;
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(24),
+      blur: 34,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: MX.panel.withOpacity(0.96),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.32), blurRadius: 36, offset: const Offset(0, 18))],
-      ),
+      tint: Colors.white.withOpacity(MXBrightness.isDark ? 0.075 : 0.82),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

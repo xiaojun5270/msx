@@ -32,7 +32,7 @@ class _NowPlayingViewState extends State<NowPlayingView> {
     final track = player.track;
     final content = _page != _NPPage.artwork;
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           Positioned.fill(child: _Backdrop(src: track?.cover)),

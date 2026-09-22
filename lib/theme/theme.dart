@@ -119,9 +119,9 @@ class MX {
   static Color get ink =>
       _dyn(const Color(0xFFFFFFFF), const Color.fromRGBO(12, 10, 14, 1));
   static Color get panel =>
-      _dyn(const Color.fromRGBO(242, 242, 247, 1), const Color.fromRGBO(22, 19, 24, 1));
+      _dyn(const Color.fromRGBO(255, 255, 255, 0.72), const Color.fromRGBO(30, 26, 33, 0.68));
   static Color get line =>
-      _dyn(Colors.black.withOpacity(0.08), Colors.white.withOpacity(0.08));
+      _dyn(Colors.black.withOpacity(0.10), Colors.white.withOpacity(0.12));
   static Color get mute =>
       _dyn(const Color.fromRGBO(60, 60, 67, 1), const Color.fromRGBO(139, 129, 120, 1));
 
@@ -138,7 +138,7 @@ class MX {
   static Color get fillStrong =>
       _dyn(Colors.black.withOpacity(0.08), Colors.white.withOpacity(0.08));
   static Color get hairline =>
-      _dyn(Colors.black.withOpacity(0.06), Colors.white.withOpacity(0.06));
+      _dyn(Colors.black.withOpacity(0.08), Colors.white.withOpacity(0.10));
   static Color get elev =>
       _dyn(Colors.black.withOpacity(0.1), Colors.white.withOpacity(0.1));
   static Color get dim =>

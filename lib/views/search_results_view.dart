@@ -51,9 +51,9 @@ class _SearchResultsViewState extends State<SearchResultsView> {
   Widget build(BuildContext context) {
     final store = context.watch<SearchStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Column(
           mainAxisSize: MainAxisSize.min,

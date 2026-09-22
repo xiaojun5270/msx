@@ -158,7 +158,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: MX.ink,
+      color: Colors.transparent,
       child: RefreshIndicator(
         color: MX.ember,
         backgroundColor: MX.panel,

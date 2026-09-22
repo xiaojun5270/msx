@@ -91,9 +91,9 @@ class _AccountViewState extends State<AccountView> {
     final session = context.watch<SessionStore>();
     final ui = context.read<UIStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('我的', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold, fontSize: 26)),
         actions: [

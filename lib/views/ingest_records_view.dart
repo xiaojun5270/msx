@@ -190,9 +190,9 @@ class _IngestRecordsViewState extends State<IngestRecordsView> {
   Widget build(BuildContext context) {
     final sorted = _sorted;
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('媒体入库记录', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [_filterMenu()],

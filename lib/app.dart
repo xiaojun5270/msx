@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'stores/player_store.dart';
 import 'stores/session_store.dart';
 import 'stores/ui_store.dart';
+import 'theme/glass.dart';
 import 'theme/theme.dart';
 import 'views/deep_link.dart';
 import 'views/login_view.dart';
@@ -28,7 +29,7 @@ class MusixApp extends StatelessWidget {
       darkTheme: _buildTheme(Brightness.dark),
       builder: (context, child) {
         MXBrightness.value = Theme.of(context).brightness;
-        return child ?? const SizedBox.shrink();
+        return AppBackdrop(child: child ?? const SizedBox.shrink());
       },
       home: const _RootGate(),
     );
@@ -44,7 +45,18 @@ class MusixApp extends StatelessWidget {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: MX.ink,
+      scaffoldBackgroundColor: Colors.transparent,
+      canvasColor: Colors.transparent,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+      ),
     );
   }
 }
@@ -98,7 +110,7 @@ class _RootGateState extends State<_RootGate> {
     final session = context.watch<SessionStore>();
     if (!session.ready) {
       return Scaffold(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         body: Center(
           child: CircularProgressIndicator(strokeWidth: 2.4, color: MX.ember),
         ),

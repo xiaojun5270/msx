@@ -159,9 +159,9 @@ Widget _chipWrap(List<Widget> chips) => Wrap(spacing: 8, runSpacing: 8, children
 
 /// Standard scaffold for a settings sub-page.
 Widget _settingsScaffold(String title, Widget body, {List<Widget>? actions}) => Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         foregroundColor: MX.fg,
         elevation: 0,
         title: Text(title, style: TextStyle(color: MX.fg, fontWeight: FontWeight.w700)),

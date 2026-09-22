@@ -207,9 +207,9 @@ class _LibraryViewState extends State<LibraryView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('资料库', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold, fontSize: 26)),
       ),
@@ -616,9 +616,9 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
   Widget build(BuildContext context) {
     final player = context.read<PlayerStore>();
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text(_title, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
@@ -954,9 +954,9 @@ class _RecentsViewState extends State<RecentsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('最近播放', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [

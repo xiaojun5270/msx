@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
+import '../theme/glass.dart';
 import '../theme/theme.dart';
 import 'components.dart';
 
@@ -18,12 +19,12 @@ Widget _sheetFrame({
   List<Widget>? actions,
 }) {
   return Builder(
-    builder: (context) => Container(
-      decoration: BoxDecoration(
-        color: MX.ink,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        border: Border.all(color: MX.hairline),
-      ),
+    builder: (context) => GlassSurface(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      blur: 34,
+      tint: MXBrightness.isDark
+          ? const Color.fromRGBO(24, 21, 28, 0.72)
+          : const Color.fromRGBO(255, 255, 255, 0.74),
       child: Column(
         children: [
           const SizedBox(height: 8),
@@ -512,5 +513,4 @@ class _PlaylistPickerSheetState extends State<PlaylistPickerSheet> {
     );
   }
 }
-
 

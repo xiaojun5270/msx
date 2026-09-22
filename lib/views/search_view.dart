@@ -65,9 +65,9 @@ class _SearchViewState extends State<SearchView> {
   Widget build(BuildContext context) {
     final store = _store;
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('搜索', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),

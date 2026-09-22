@@ -157,9 +157,9 @@ class _ServerLogsViewState extends State<ServerLogsView> {
   Widget build(BuildContext context) {
     final isAdmin = context.read<SessionStore>().role == 'admin';
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('服务日志', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
@@ -395,9 +395,9 @@ class _ClientLogsViewState extends State<ClientLogsView> {
       builder: (context, _) {
         final logs = _logs;
         return Scaffold(
-          backgroundColor: MX.ink,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
-            backgroundColor: MX.ink,
+            backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             title: Text('客户端日志', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
             actions: [

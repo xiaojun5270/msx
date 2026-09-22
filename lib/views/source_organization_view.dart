@@ -58,9 +58,9 @@ class _SourceRunsViewState extends State<SourceRunsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('音源整理记录', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
@@ -228,9 +228,9 @@ class _SourceOrganizationViewState extends State<SourceOrganizationView> {
   Widget build(BuildContext context) {
     final run = _run;
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         title: Text('整理音源', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),

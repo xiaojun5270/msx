@@ -14,7 +14,7 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = Container(
-      color: MX.ink,
+      color: Colors.transparent,
       alignment: Alignment.center,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -31,9 +31,9 @@ class PlaceholderScreen extends StatelessWidget {
     );
     if (!appBar) return body;
     return Scaffold(
-      backgroundColor: MX.ink,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: MX.ink,
+        backgroundColor: Colors.transparent,
         foregroundColor: MX.fg,
         title: Text(title),
       ),
