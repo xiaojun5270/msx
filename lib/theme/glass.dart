@@ -46,6 +46,9 @@ class GlassSurface extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final Color? tint;
   final bool interactive;
+  final bool showBorder;
+  final bool showHighlight;
+  final bool showShadow;
 
   const GlassSurface({
     super.key,
@@ -55,6 +58,9 @@ class GlassSurface extends StatelessWidget {
     this.padding,
     this.tint,
     this.interactive = false,
+    this.showBorder = true,
+    this.showHighlight = true,
+    this.showShadow = true,
   });
 
   @override
@@ -71,13 +77,15 @@ class GlassSurface extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(dark ? 0.24 : 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        boxShadow: showShadow
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(dark ? 0.24 : 0.10),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ]
+            : null,
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
@@ -96,28 +104,29 @@ class GlassSurface extends StatelessWidget {
                   Color.alphaBlend(accent, base),
                 ],
               ),
-              border: Border.all(color: edge, width: 0.8),
+              border: showBorder ? Border.all(color: edge, width: 0.8) : null,
             ),
             child: Stack(
               children: [
                 child,
-                Positioned(
-                  top: 0,
-                  left: 14,
-                  right: 14,
-                  child: Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withOpacity(dark ? 0.24 : 0.72),
-                          Colors.transparent,
-                        ],
+                if (showHighlight)
+                  Positioned(
+                    top: 0,
+                    left: 14,
+                    right: 14,
+                    child: Container(
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.white.withOpacity(dark ? 0.24 : 0.72),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

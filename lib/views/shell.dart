@@ -231,16 +231,19 @@ class _TabBar extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding:
-          EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 10),
+          EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 8),
       child: GlassSurface(
-        borderRadius: BorderRadius.circular(38),
-        blur: 40,
+        borderRadius: BorderRadius.circular(32),
+        blur: 42,
         tint: dark
-            ? const Color.fromRGBO(34, 33, 36, 0.54)
-            : const Color.fromRGBO(255, 255, 255, 0.58),
-        padding: const EdgeInsets.all(4),
+            ? const Color.fromRGBO(255, 255, 255, 0.06)
+            : const Color.fromRGBO(255, 255, 255, 0.28),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        showBorder: false,
+        showHighlight: false,
+        showShadow: false,
         child: SizedBox(
-          height: 66,
+          height: 54,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -263,36 +266,36 @@ class _TabBar extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           margin: const EdgeInsets.symmetric(horizontal: 1),
-          padding: const EdgeInsets.symmetric(vertical: 7),
+          padding: const EdgeInsets.symmetric(vertical: 3),
           decoration: BoxDecoration(
             color: active
-                ? MX.fg.withOpacity(dark ? 0.12 : 0.08)
+                ? MX.fg.withOpacity(dark ? 0.10 : 0.12)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(31),
+            borderRadius: BorderRadius.circular(27),
             border: Border.all(
-              color: active ? MX.fg.withOpacity(0.20) : Colors.transparent,
-              width: 0.8,
+              color: active ? MX.fg.withOpacity(0.12) : Colors.transparent,
+              width: 0.6,
             ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_tabIcon(tab, active), size: 24, color: color),
-              const SizedBox(height: 3),
+              Icon(_tabIcon(tab, active), size: 22, color: color),
+              const SizedBox(height: 2),
               Text(
                 tab.title,
                 maxLines: 1,
                 style: TextStyle(
                   color: color,
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w400,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 width: active ? 18 : 0,
-                height: 2,
+                height: 1.5,
                 decoration: BoxDecoration(
                   color: MX.ember,
                   borderRadius: BorderRadius.circular(2),
