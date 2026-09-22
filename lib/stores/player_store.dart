@@ -264,7 +264,7 @@ class PlayerStore extends ChangeNotifier {
     }
     _setWantsPlayback(true);
     final generation = _token;
-    await _av.play();
+    unawaited(_av.play());
     if (generation != _token || !_wantsPlayback) return;
     _syncPlaybackState();
     _publishNowPlaying();
@@ -478,7 +478,7 @@ class PlayerStore extends ChangeNotifier {
       return true;
     }
     _setWantsPlayback(true);
-    await _av.play();
+    unawaited(_av.play());
     if (generation != _token || !_wantsPlayback || !_canReuseCurrentPlayback(item)) return false;
     _syncPlaybackState();
     _publishNowPlaying();
@@ -618,7 +618,7 @@ class PlayerStore extends ChangeNotifier {
     _applyVolume();
     if (autoplay) {
       if (mine != _token) return true;
-      await _av.play();
+      unawaited(_av.play());
     }
     _syncPlaybackState();
     _publishNowPlaying();
@@ -825,7 +825,7 @@ class PlayerStore extends ChangeNotifier {
       _applyVolume();
 
       if (_wantsPlayback) {
-        await _av.play();
+        unawaited(_av.play());
         if (mine != _token) return;
       } else {
         await _av.pause();

@@ -1,13 +1,13 @@
 # MusicX — Flutter 版
 
-原生 SwiftUI 客户端（`../Shared`）的 1:1 Flutter 复刻，目标平台 **Android**。
+MusicX 原生客户端的 Flutter 版本，目标平台 **Android**。
 
 ## 首次构建（Windows）
 
 工程只包含手写的源码与 Android 配置，Gradle wrapper / gradlew / 启动图标等自动生成文件需由 Flutter 补齐：
 
 ```bash
-cd flutter_app
+cd msx
 
 # 1) 让 Flutter 生成 gradle wrapper、gradlew、图标等缺失的脚手架文件
 #    （会保留已存在的 lib/、pubspec.yaml、android/app/src 下的手写文件）

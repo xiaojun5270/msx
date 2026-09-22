@@ -219,15 +219,18 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    return GlassSurface(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-      blur: 30,
-      padding: EdgeInsets.only(top: 8, bottom: 8 + bottomInset, left: 6, right: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          for (final tab in order) _item(tab),
-        ],
+    return Padding(
+      padding: EdgeInsets.fromLTRB(10, 0, 10, bottomInset > 0 ? bottomInset : 8),
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(24),
+        blur: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            for (final tab in order) _item(tab),
+          ],
+        ),
       ),
     );
   }
