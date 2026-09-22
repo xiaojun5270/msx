@@ -22,7 +22,7 @@ Widget _sheetFrame({
     builder: (context) => GlassSurface(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
       blur: 34,
-      tint: MXBrightness.isDark
+      tint: Theme.of(context).brightness == Brightness.dark
           ? const Color.fromRGBO(24, 21, 28, 0.72)
           : const Color.fromRGBO(255, 255, 255, 0.74),
       child: Column(
@@ -31,13 +31,18 @@ Widget _sheetFrame({
           Container(
             width: 40,
             height: 4,
-            decoration: BoxDecoration(color: MX.dimSoft, borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(
+                color: MX.dimSoft, borderRadius: BorderRadius.circular(2)),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
             child: Row(
               children: [
-                Text(title, style: TextStyle(color: MX.fg, fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(title,
+                    style: TextStyle(
+                        color: MX.fg,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
                 const Spacer(),
                 if (actions != null) ...actions,
                 TextButton(
@@ -67,7 +72,8 @@ Future<void> showAuxSheet(BuildContext context, Widget sheet) {
       minChildSize: 0.4,
       maxChildSize: 0.92,
       expand: false,
-      builder: (_, controller) => _SheetControllerScope(controller: controller, child: sheet),
+      builder: (_, controller) =>
+          _SheetControllerScope(controller: controller, child: sheet),
     ),
   );
 }
@@ -77,11 +83,13 @@ class _SheetControllerScope extends InheritedWidget {
   final ScrollController controller;
   const _SheetControllerScope({required this.controller, required super.child});
 
-  static ScrollController of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_SheetControllerScope>()!.controller;
+  static ScrollController of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<_SheetControllerScope>()!
+      .controller;
 
   @override
-  bool updateShouldNotify(_SheetControllerScope oldWidget) => controller != oldWidget.controller;
+  bool updateShouldNotify(_SheetControllerScope oldWidget) =>
+      controller != oldWidget.controller;
 }
 
 // __APPEND_QUEUE_SHEET__
@@ -99,7 +107,9 @@ class QueueSheet extends StatelessWidget {
       title: '队列',
       controller: controller,
       body: queue.isEmpty
-          ? Center(child: Text('队列为空', style: TextStyle(color: MX.mute, fontSize: 14)))
+          ? Center(
+              child:
+                  Text('队列为空', style: TextStyle(color: MX.mute, fontSize: 14)))
           : ListView.builder(
               controller: controller,
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -110,7 +120,8 @@ class QueueSheet extends StatelessWidget {
                 return InkWell(
                   onTap: () => context.read<PlayerStore>().jumpTo(i),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
                         SizedBox(
@@ -120,7 +131,9 @@ class QueueSheet extends StatelessWidget {
                               style: TextStyle(
                                   color: MX.dimSoft,
                                   fontSize: 13,
-                                  fontFeatures: const [FontFeature.tabularFigures()])),
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ])),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -130,13 +143,16 @@ class QueueSheet extends StatelessWidget {
                               Text(t.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: current ? MX.ember : MX.fg, fontSize: 15)),
+                                  style: TextStyle(
+                                      color: current ? MX.ember : MX.fg,
+                                      fontSize: 15)),
                               if (t.artistText.isNotEmpty) ...[
                                 const SizedBox(height: 2),
                                 Text(t.artistText,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: MX.mute, fontSize: 12)),
+                                    style: TextStyle(
+                                        color: MX.mute, fontSize: 12)),
                               ],
                             ],
                           ),
@@ -223,7 +239,8 @@ class _SourceSheetState extends State<SourceSheet> {
     if (original == null || version == null) return;
     setState(() => _applying = true);
     try {
-      final outcome = await player.applySource(candidate, original, version: version);
+      final outcome =
+          await player.applySource(candidate, original, version: version);
       if (!mounted) return;
       setState(() {
         _applying = false;
@@ -267,7 +284,10 @@ class _SourceSheetState extends State<SourceSheet> {
                       Text(head.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
+                          style: TextStyle(
+                              color: MX.fg,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
                       if (head.artistText.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(head.artistText,
@@ -282,21 +302,27 @@ class _SourceSheetState extends State<SourceSheet> {
             ),
             const SizedBox(height: 16),
           ],
-          Text('候选音源 · 验证并保存后生效', style: TextStyle(color: MX.mute, fontSize: 12)),
+          Text('候选音源 · 验证并保存后生效',
+              style: TextStyle(color: MX.mute, fontSize: 12)),
           const SizedBox(height: 8),
           if (_loading)
             for (int i = 0; i < 4; i++)
-              const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: SkeletonBar(height: 48))
+              const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: SkeletonBar(height: 48))
           else if (_list.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Center(child: Text('暂无其他音源', style: TextStyle(color: MX.mute, fontSize: 14))),
+              child: Center(
+                  child: Text('暂无其他音源',
+                      style: TextStyle(color: MX.mute, fontSize: 14))),
             )
           else
             for (final t in _list)
               _SourceRow(
                 track: t,
-                current: ui.sourceTrack?.key == player.track?.key && t.key == player.selectedSourceKey,
+                current: ui.sourceTrack?.key == player.track?.key &&
+                    t.key == player.selectedSourceKey,
                 bound: session.bindings[t.platform]?.bound == true,
                 onTap: _applying ? null : () => _apply(t),
               ),
@@ -305,15 +331,21 @@ class _SourceSheetState extends State<SourceSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
                 const SizedBox(width: 10),
-                Text('验证并保存音源…', style: TextStyle(color: MX.mute, fontSize: 13)),
+                Text('验证并保存音源…',
+                    style: TextStyle(color: MX.mute, fontSize: 13)),
               ],
             ),
           ],
           if (_applyMessage != null && !_applying) ...[
             const SizedBox(height: 12),
-            Text(_applyMessage!, textAlign: TextAlign.center, style: TextStyle(color: MX.mute, fontSize: 13)),
+            Text(_applyMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: MX.mute, fontSize: 13)),
           ],
         ],
       ),
@@ -326,9 +358,15 @@ class _SourceRow extends StatelessWidget {
   final bool current;
   final bool bound;
   final VoidCallback? onTap;
-  const _SourceRow({required this.track, required this.current, required this.bound, this.onTap});
+  const _SourceRow(
+      {required this.track,
+      required this.current,
+      required this.bound,
+      this.onTap});
 
-  String get _subtitle => [track.artistText, track.album ?? ''].where((s) => s.isNotEmpty).join(' · ');
+  String get _subtitle => [track.artistText, track.album ?? '']
+      .where((s) => s.isNotEmpty)
+      .join(' · ');
 
   String get _detail {
     final tags = <String>[];
@@ -363,15 +401,20 @@ class _SourceRow extends StatelessWidget {
                   Text(track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: current ? MX.ember : MX.fg, fontSize: 15)),
+                      style: TextStyle(
+                          color: current ? MX.ember : MX.fg, fontSize: 15)),
                   if (_subtitle.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(_subtitle,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: MX.mute, fontSize: 12)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: MX.mute, fontSize: 12)),
                   ],
                   const SizedBox(height: 2),
                   Text(_detail,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: MX.dimSoft, fontSize: 11)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: MX.dimSoft, fontSize: 11)),
                 ],
               ),
             ),
@@ -409,7 +452,8 @@ class _PlaylistPickerSheetState extends State<PlaylistPickerSheet> {
   Future<void> _load() async {
     final api = context.read<SessionStore>().api;
     try {
-      final box = await api.getJson('/api/my/playlists', PlaylistsPayload.fromJson);
+      final box =
+          await api.getJson('/api/my/playlists', PlaylistsPayload.fromJson);
       if (!mounted) return;
       setState(() {
         _lists = (box.playlists ?? [])
@@ -465,7 +509,9 @@ class _PlaylistPickerSheetState extends State<PlaylistPickerSheet> {
         ],
       );
     } else if (_lists.isEmpty) {
-      body = Center(child: Text('暂无可用歌单', style: TextStyle(color: MX.mute, fontSize: 14)));
+      body = Center(
+          child:
+              Text('暂无可用歌单', style: TextStyle(color: MX.mute, fontSize: 14)));
     } else {
       body = ListView.builder(
         controller: controller,
@@ -479,7 +525,8 @@ class _PlaylistPickerSheetState extends State<PlaylistPickerSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  CoverArt(src: p.cover, mosaic: p.artTiles, size: 44, corner: 6),
+                  CoverArt(
+                      src: p.cover, mosaic: p.artTiles, size: 44, corner: 6),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -513,4 +560,3 @@ class _PlaylistPickerSheetState extends State<PlaylistPickerSheet> {
     );
   }
 }
-

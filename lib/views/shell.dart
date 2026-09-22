@@ -31,7 +31,13 @@ class MobileShell extends StatefulWidget {
 }
 
 class _MobileShellState extends State<MobileShell> {
-  static const _order = [AppTab.home, AppTab.library, AppTab.recents, AppTab.profile, AppTab.search];
+  static const _order = [
+    AppTab.home,
+    AppTab.library,
+    AppTab.recents,
+    AppTab.profile,
+    AppTab.search
+  ];
 
   final Map<AppTab, GlobalKey<NavigatorState>> _navKeys = {
     for (final t in _order) t: GlobalKey<NavigatorState>(),
@@ -99,10 +105,12 @@ class _MobileShellState extends State<MobileShell> {
 
     // Route intents raised anywhere (deep links, in-view navigation) are
     // pushed onto the active tab's stack after the frame commits.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _consumePendingRoute(ui));
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _consumePendingRoute(ui));
 
     // Present / dismiss the full Now Playing surface as a fullscreen route.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncNowPlaying(player));
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _syncNowPlaying(player));
 
     // Present the source-organization sheet when requested via UIStore.
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncOrganization(ui));
@@ -192,8 +200,8 @@ class _MobileShellState extends State<MobileShell> {
         transitionDuration: const Duration(milliseconds: 320),
         pageBuilder: (_, __, ___) => const NowPlayingView(),
         transitionsBuilder: (_, anim, __, child) => SlideTransition(
-          position: Tween(begin: const Offset(0, 1), end: Offset.zero)
-              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
       ))
@@ -214,47 +222,102 @@ class _TabBar extends StatelessWidget {
   final AppTab current;
   final List<AppTab> order;
   final ValueChanged<AppTab> onSelect;
-  const _TabBar({required this.current, required this.order, required this.onSelect});
+  const _TabBar(
+      {required this.current, required this.order, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: EdgeInsets.fromLTRB(10, 0, 10, bottomInset > 0 ? bottomInset : 8),
+      padding:
+          EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 10),
       child: GlassSurface(
-        borderRadius: BorderRadius.circular(24),
-        blur: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            for (final tab in order) _item(tab),
-          ],
+        borderRadius: BorderRadius.circular(38),
+        blur: 40,
+        tint: dark
+            ? const Color.fromRGBO(34, 33, 36, 0.54)
+            : const Color.fromRGBO(255, 255, 255, 0.58),
+        padding: const EdgeInsets.all(4),
+        child: SizedBox(
+          height: 66,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              for (final tab in order) _item(tab, dark),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _item(AppTab tab) {
+  Widget _item(AppTab tab, bool dark) {
     final active = tab == current;
-    final color = active ? MX.ember : MX.mute;
+    final color = active ? MX.fg : MX.mute.withOpacity(0.76);
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => onSelect(tab),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(tab.icon, size: 24, color: color),
-            const SizedBox(height: 3),
-            Text(
-              tab.title,
-              style: TextStyle(color: color, fontSize: 10.5, fontWeight: active ? FontWeight.w600 : FontWeight.w400),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: active
+                ? MX.fg.withOpacity(dark ? 0.12 : 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(31),
+            border: Border.all(
+              color: active ? MX.fg.withOpacity(0.20) : Colors.transparent,
+              width: 0.8,
             ),
-          ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_tabIcon(tab, active), size: 24, color: color),
+              const SizedBox(height: 3),
+              Text(
+                tab.title,
+                maxLines: 1,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 10.5,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 3),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                width: active ? 18 : 0,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: MX.ember,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  IconData _tabIcon(AppTab tab, bool active) {
+    switch (tab) {
+      case AppTab.home:
+        return active ? Icons.home_rounded : Icons.home_outlined;
+      case AppTab.library:
+        return active ? Icons.library_music : Icons.library_music_outlined;
+      case AppTab.recents:
+        return active ? Icons.access_time_filled : Icons.access_time;
+      case AppTab.profile:
+        return active ? Icons.account_circle : Icons.account_circle_outlined;
+      case AppTab.search:
+        return Icons.search;
+    }
   }
 }
 
@@ -268,7 +331,8 @@ class _Toast extends StatelessWidget {
     return GlassCapsule(
       child: Text(
         text,
-        style: TextStyle(color: MX.fg, fontSize: 14, fontWeight: FontWeight.w500),
+        style:
+            TextStyle(color: MX.fg, fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }

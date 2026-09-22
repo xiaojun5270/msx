@@ -135,7 +135,11 @@ class _LoginViewState extends State<LoginView> {
         const SizedBox(height: 34),
         const Text(
           '你的音乐，\n在这里继续播放。',
-          style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold, height: 1.15),
+          style: TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              height: 1.15),
         ),
         const SizedBox(height: 16),
         _featureLabels(),
@@ -157,7 +161,12 @@ class _LoginViewState extends State<LoginView> {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(15),
-            boxShadow: [BoxShadow(color: accent.color.withOpacity(0.34), blurRadius: 18, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(
+                  color: accent.color.withOpacity(0.34),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8))
+            ],
           ),
           child: const Icon(Icons.graphic_eq, color: Colors.white, size: 20),
         ),
@@ -167,10 +176,18 @@ class _LoginViewState extends State<LoginView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('MUSICX',
-                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 2.8)),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.8)),
             const SizedBox(height: 3),
             Text('YOUR PERSONAL SOUNDSPACE',
-                style: TextStyle(color: Colors.white.withOpacity(0.42), fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 1.1)),
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.42),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.1)),
           ],
         ),
       ],
@@ -183,7 +200,11 @@ class _LoginViewState extends State<LoginView> {
           children: [
             Icon(icon, size: 14, color: Colors.white.withOpacity(0.62)),
             const SizedBox(width: 6),
-            Text(title, style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12, fontWeight: FontWeight.w500)),
+            Text(title,
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.62),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500)),
           ],
         );
     return Row(
@@ -203,15 +224,21 @@ class _LoginViewState extends State<LoginView> {
       borderRadius: BorderRadius.circular(24),
       blur: 34,
       padding: const EdgeInsets.all(20),
-      tint: Colors.white.withOpacity(MXBrightness.isDark ? 0.075 : 0.82),
+      tint: Colors.white.withOpacity(
+        Theme.of(context).brightness == Brightness.dark ? 0.075 : 0.82,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(setup ? '欢迎使用' : '欢迎回来',
-              style: TextStyle(color: accent.color, fontSize: 13, fontWeight: FontWeight.w600)),
+              style: TextStyle(
+                  color: accent.color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Text(setup ? '设置你的访问密码' : '登录到你的音乐库',
-              style: TextStyle(color: MX.fg, fontSize: 27, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: MX.fg, fontSize: 27, fontWeight: FontWeight.bold)),
           const SizedBox(height: 9),
           Text(setup ? '设置完成后，即可连接并开始管理个人音乐。' : '输入服务器地址与密码，继续你的聆听。',
               style: TextStyle(color: MX.dim, fontSize: 13, height: 1.3)),
@@ -255,7 +282,8 @@ class _LoginViewState extends State<LoginView> {
           active: active,
           child: Row(
             children: [
-              Icon(Icons.lan_outlined, size: 18, color: active ? accent.color : MX.dim),
+              Icon(Icons.lan_outlined,
+                  size: 18, color: active ? accent.color : MX.dim),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
@@ -290,7 +318,8 @@ class _LoginViewState extends State<LoginView> {
           active: active,
           child: Row(
             children: [
-              Icon(Icons.lock_outline, size: 18, color: active ? accent.color : MX.dim),
+              Icon(Icons.lock_outline,
+                  size: 18, color: active ? accent.color : MX.dim),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
@@ -313,14 +342,18 @@ class _LoginViewState extends State<LoginView> {
   Widget _advancedToggle() {
     return TextButton(
       onPressed: () => setState(() => _advancedOpen = !_advancedOpen),
-      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+      style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14)),
       child: Row(
         children: [
           Icon(Icons.tune, size: 15, color: MX.dim),
           const SizedBox(width: 7),
-          Text('高级连接选项', style: TextStyle(color: MX.dim, fontSize: 12, fontWeight: FontWeight.w500)),
+          Text('高级连接选项',
+              style: TextStyle(
+                  color: MX.dim, fontSize: 12, fontWeight: FontWeight.w500)),
           const Spacer(),
-          Icon(_advancedOpen ? Icons.expand_less : Icons.expand_more, size: 18, color: MX.dim),
+          Icon(_advancedOpen ? Icons.expand_less : Icons.expand_more,
+              size: 18, color: MX.dim),
         ],
       ),
     );
@@ -368,7 +401,11 @@ class _LoginViewState extends State<LoginView> {
           const Icon(Icons.error_outline, size: 16, color: errorColor),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(_error, style: const TextStyle(color: errorColor, fontSize: 12, fontWeight: FontWeight.w500)),
+            child: Text(_error,
+                style: const TextStyle(
+                    color: errorColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -381,17 +418,26 @@ class _LoginViewState extends State<LoginView> {
       height: 40,
       child: FilledButton(
         onPressed: _loading ? null : _submit,
-        style: FilledButton.styleFrom(backgroundColor: MX.ember, foregroundColor: Colors.white),
+        style: FilledButton.styleFrom(
+            backgroundColor: MX.ember, foregroundColor: Colors.white),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (_loading)
               const SizedBox(
-                  width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
             else
               const Icon(Icons.arrow_forward, size: 18),
             const SizedBox(width: 8),
-            Text(_loading ? '正在连接…' : setup ? '完成设置' : '进入 MusicX',
+            Text(
+                _loading
+                    ? '正在连接…'
+                    : setup
+                        ? '完成设置'
+                        : '进入 MusicX',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
@@ -400,7 +446,10 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _inputLabel(String text) => Text(text,
-      style: TextStyle(color: MX.fg.withOpacity(0.84), fontSize: 12, fontWeight: FontWeight.w600));
+      style: TextStyle(
+          color: MX.fg.withOpacity(0.84),
+          fontSize: 12,
+          fontWeight: FontWeight.w600));
 
   InputDecoration _plainInput(String hint) => InputDecoration(
         isDense: true,
@@ -409,7 +458,8 @@ class _LoginViewState extends State<LoginView> {
         hintStyle: TextStyle(color: MX.dim),
       );
 
-  Widget _inputBox({required bool active, required Widget child, double minHeight = 48}) {
+  Widget _inputBox(
+      {required bool active, required Widget child, double minHeight = 48}) {
     final accent = context.read<UIStore>().themeAccent;
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
@@ -469,7 +519,11 @@ class _LoginBackground extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color.fromRGBO(12, 10, 14, 0.4), Color.fromRGBO(12, 10, 14, 0.85)],
+                  colors: [
+                    Colors.transparent,
+                    Color.fromRGBO(12, 10, 14, 0.4),
+                    Color.fromRGBO(12, 10, 14, 0.85)
+                  ],
                 ),
               ),
             ),
@@ -484,7 +538,9 @@ class _LoginBackground extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: color, blurRadius: 110, spreadRadius: 60)],
+          boxShadow: [
+            BoxShadow(color: color, blurRadius: 110, spreadRadius: 60)
+          ],
           color: color,
         ),
       );

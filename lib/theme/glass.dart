@@ -11,7 +11,7 @@ class AppBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = MXBrightness.isDark;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final base = dark ? const Color(0xFF0B090D) : const Color(0xFFF1F4F7);
     final warm = Color.alphaBlend(
       ThemeAccent.current.color.withOpacity(dark ? 0.14 : 0.10),
@@ -59,11 +59,15 @@ class GlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = MXBrightness.isDark;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final base = tint ??
-        (dark ? Colors.white.withOpacity(0.075) : Colors.white.withOpacity(0.52));
-    final edge = dark ? Colors.white.withOpacity(0.18) : Colors.white.withOpacity(0.78);
-    final accent = ThemeAccent.current.color.withOpacity(interactive ? 0.12 : 0.035);
+        (dark
+            ? Colors.white.withOpacity(0.075)
+            : Colors.white.withOpacity(0.52));
+    final edge =
+        dark ? Colors.white.withOpacity(0.18) : Colors.white.withOpacity(0.78);
+    final accent =
+        ThemeAccent.current.color.withOpacity(interactive ? 0.12 : 0.035);
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,

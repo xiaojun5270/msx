@@ -15,12 +15,44 @@ import 'views/shell.dart';
 
 /// Root widget. Resolves the active [Brightness] into [MXBrightness] (which the
 /// `MX` color tokens read) and hosts the app shell. Mirrors Swift `RootView`.
-class MusixApp extends StatelessWidget {
+class MusixApp extends StatefulWidget {
   const MusixApp({super.key});
+
+  @override
+  State<MusixApp> createState() => _MusixAppState();
+}
+
+class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
+  late Brightness _platformBrightness;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _platformBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    final next = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    if (next != _platformBrightness) setState(() => _platformBrightness = next);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final ui = context.watch<UIStore>();
+    MXBrightness.value = switch (ui.appearance) {
+      AppearanceMode.light => Brightness.light,
+      AppearanceMode.dark => Brightness.dark,
+      AppearanceMode.system => _platformBrightness,
+    };
     return MaterialApp(
       title: 'Musix',
       debugShowCheckedModeBanner: false,
@@ -36,7 +68,6 @@ class MusixApp extends StatelessWidget {
   }
 
   ThemeData _buildTheme(Brightness brightness) {
-    MXBrightness.value = brightness;
     final scheme = ColorScheme.fromSeed(
       seedColor: ThemeAccent.current.color,
       brightness: brightness,
