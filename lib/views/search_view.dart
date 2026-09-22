@@ -9,6 +9,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'search_results_view.dart';
 
 /// The search tab. Mirrors Swift `SearchView` / `SpotlightSearchContent`:
 /// a search field over a suggestion list (history, local matches, an inline

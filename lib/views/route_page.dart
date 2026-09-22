@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/route.dart';
+import 'account_view.dart';
 import 'detail_views.dart';
 import 'explore_views.dart';
 import 'ingest_records_view.dart';

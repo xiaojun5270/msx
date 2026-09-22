@@ -413,7 +413,9 @@ class SearchStore extends ChangeNotifier {
   static SearchResult _mergePage(SearchResult prev, SearchResult page) {
     List<T> merge<T>(List<T>? a, List<T>? b, String Function(T) key) {
       final seen = <String>{};
-      return [...(a ?? []), ...(b ?? [])].where((e) => seen.add(key(e))).toList();
+      return <T>[...(a ?? <T>[]), ...(b ?? <T>[])]
+          .where((e) => seen.add(key(e)))
+          .toList();
     }
 
     return SearchResult(
