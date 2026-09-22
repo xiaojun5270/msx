@@ -27,15 +27,24 @@ Future<void> main() async {
 
   // Bind the player to its dependencies, then hand it to the OS media session.
   player.bind(session: session, ui: ui);
-  await AudioService.init(
-    builder: () => MusixAudioHandler(player),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'app.altman.musix.playback',
-      androidNotificationChannelName: '正在播放',
-      androidNotificationOngoing: true,
-      androidStopForegroundOnPause: true,
-    ),
-  );
+  try {
+    await AudioService.init(
+      builder: () => MusixAudioHandler(player),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'app.altman.musix.playback',
+        androidNotificationChannelName: '正在播放',
+        androidNotificationOngoing: true,
+        androidStopForegroundOnPause: true,
+      ),
+    );
+  } catch (error, stackTrace) {
+    FlutterError.reportError(FlutterErrorDetails(
+      exception: error,
+      stack: stackTrace,
+      library: 'audio_service',
+      context: ErrorDescription('while initializing Android media controls'),
+    ));
+  }
 
   runApp(
     MultiProvider(

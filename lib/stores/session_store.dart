@@ -54,7 +54,12 @@ class SessionStore extends ChangeNotifier {
   void _restore() {
     final token = local.prefs.sessionToken;
     api.setToken(token);
-    if (token.isEmpty || !local.prefs.authedCached) return;
+    if (token.isEmpty || !local.prefs.authedCached) {
+      // Show the login screen immediately while bootstrap probes the server.
+      // A fresh install otherwise appears frozen for the full network timeout.
+      ready = true;
+      return;
+    }
     authed = true;
     role = local.prefs.role;
     bindings = local.loadBindings();
