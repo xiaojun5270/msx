@@ -1,0 +1,54 @@
+name: musix
+description: MusicX — 自建音乐服务客户端 (Flutter 1:1 port of the native SwiftUI app)
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management — mirrors the app's @Observable stores.
+  provider: ^6.1.2
+
+  # Networking — cookie (musix_session + proxy) is injected per request.
+  http: ^1.2.2
+  http_parser: ^4.0.2
+
+  # Audio playback — replaces AVPlayer + custom resource loader.
+  just_audio: ^0.9.42
+  audio_session: ^0.1.21
+  audio_service: ^0.18.15
+
+  # Image loading with cookie header injection — replaces Kingfisher.
+  cached_network_image: ^3.4.1
+
+  # Average-color artwork theming — replaces CoreImage CIAreaAverage.
+  palette_generator: ^0.3.3+5
+
+  # Local persistence — replaces SwiftData AppPrefs + caches.
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.4
+
+  # Deep links (musicx://) — replaces onOpenURL.
+  app_links: ^6.3.2
+
+  # Home-screen widgets — replaces WidgetKit widgets.
+  home_widget: ^0.7.0
+
+  # Avatar upload — replaces SwiftUI PhotosPicker.
+  image_picker: ^1.1.2
+
+  # LX source script import — replaces SwiftUI .fileImporter.
+  file_picker: ^8.1.2
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

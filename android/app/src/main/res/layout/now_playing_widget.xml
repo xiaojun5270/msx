@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:padding="14dp"
+    android:background="#160F0A"
+    android:gravity="center_vertical">
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/widget_cover"
+            android:layout_width="76dp"
+            android:layout_height="76dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/widget_cover_placeholder"
+            android:contentDescription="cover" />
+
+        <ImageView
+            android:id="@+id/widget_state"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="4dp"
+            android:padding="4dp"
+            android:background="#99000000"
+            android:src="@android:drawable/ic_media_play"
+            android:contentDescription="state" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="14dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#9E8B8178"
+            android:textSize="11sp"
+            android:textAllCaps="false"
+            android:text="正在播放" />
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="#F5ECE4"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="2dp"
+            android:text="未在播放" />
+
+        <TextView
+            android:id="@+id/widget_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#8B8178"
+            android:textSize="13sp"
+            android:layout_marginTop="2dp"
+            android:text="打开 MusicX 开始听歌" />
+
+        <ProgressBar
+            android:id="@+id/widget_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="8dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressTint="#F26B4E"
+            android:progressBackgroundTint="#3AFFFFFF" />
+    </LinearLayout>
+</LinearLayout>
