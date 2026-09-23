@@ -166,7 +166,8 @@ class _HomeViewState extends State<HomeView> {
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+              padding: EdgeInsets.fromLTRB(
+                  20, 12, 20, MediaQuery.paddingOf(context).bottom),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   Padding(

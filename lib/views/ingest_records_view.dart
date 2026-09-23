@@ -224,7 +224,8 @@ class _IngestRecordsViewState extends State<IngestRecordsView> {
               child: (!_loading && _filtered.isEmpty)
                   ? _emptyView()
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(12, 6, 12, 120),
+                      padding: EdgeInsets.fromLTRB(
+                          12, 6, 12, MediaQuery.paddingOf(context).bottom),
                       itemCount: sorted.length + 2,
                       itemBuilder: (_, i) {
                         if (i == 0) {

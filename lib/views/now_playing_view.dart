@@ -69,17 +69,29 @@ class _NowPlayingViewState extends State<NowPlayingView> {
   }
 
   Widget _topBar(PlayerStore player) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: GestureDetector(
-        onTap: () => player.setNowPlayingOpen(false),
-        child: Container(
-          width: 44,
-          height: 44,
-          margin: const EdgeInsets.only(top: 6),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), shape: BoxShape.circle),
-          child: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 26),
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => player.setNowPlayingOpen(false),
+              child: Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.keyboard_arrow_down,
+                    color: Colors.white, size: 26),
+              ),
+            ),
+            const Spacer(),
+            const _MoreMenu(),
+          ],
         ),
       ),
     );
@@ -93,7 +105,12 @@ class _NowPlayingViewState extends State<NowPlayingView> {
           final side = c.maxWidth.clamp(0.0, 380.0);
           return Container(
             decoration: BoxDecoration(
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.45), blurRadius: 20, offset: const Offset(0, 12))],
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.45),
+                    blurRadius: 20,
+                    offset: const Offset(0, 12))
+              ],
             ),
             child: CoverArt(src: track?.cover, size: side, corner: 12),
           );
@@ -117,17 +134,20 @@ class _NowPlayingViewState extends State<NowPlayingView> {
               Text(track?.title ?? '',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(track?.artistText ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.7), fontSize: 14)),
             ],
           ),
         ),
         _FavoriteButton(),
-        _MoreMenu(),
       ],
     );
   }
@@ -137,34 +157,47 @@ class _NowPlayingViewState extends State<NowPlayingView> {
       height: 44,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
-        children: [_FavoriteButton(), _MoreMenu()],
+        children: [_FavoriteButton()],
       ),
     );
   }
 
   Widget _footer() {
-    Widget mode(IconData icon, bool selected, VoidCallback onTap) => GestureDetector(
+    Widget mode(IconData icon, bool selected, VoidCallback onTap) =>
+        GestureDetector(
           onTap: onTap,
           child: Container(
             width: 44,
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? Colors.white.withOpacity(0.86) : Colors.transparent,
+              color: selected
+                  ? Colors.white.withOpacity(0.86)
+                  : Colors.transparent,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: selected ? MX.ink.withOpacity(0.82) : Colors.white.withOpacity(0.86), size: 22),
+            child: Icon(icon,
+                color: selected
+                    ? MX.ink.withOpacity(0.82)
+                    : Colors.white.withOpacity(0.86),
+                size: 22),
           ),
         );
     return Row(
       children: [
-        mode(Icons.format_quote, _page == _NPPage.lyrics,
-            () => setState(() => _page = _page == _NPPage.lyrics ? _NPPage.artwork : _NPPage.lyrics)),
+        mode(
+            Icons.format_quote,
+            _page == _NPPage.lyrics,
+            () => setState(() => _page =
+                _page == _NPPage.lyrics ? _NPPage.artwork : _NPPage.lyrics)),
         const Spacer(),
         Icon(Icons.airplay, color: Colors.white.withOpacity(0.86), size: 22),
         const Spacer(),
-        mode(Icons.queue_music, _page == _NPPage.queue,
-            () => setState(() => _page = _page == _NPPage.queue ? _NPPage.artwork : _NPPage.queue)),
+        mode(
+            Icons.queue_music,
+            _page == _NPPage.queue,
+            () => setState(() => _page =
+                _page == _NPPage.queue ? _NPPage.artwork : _NPPage.queue)),
       ],
     );
   }
@@ -208,6 +241,8 @@ class _Meta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerStore>();
+    final titleScale =
+        MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.2).toDouble();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -219,7 +254,13 @@ class _Meta extends StatelessWidget {
               Text(track?.title ?? '',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  textScaler: TextScaler.linear(titleScale),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                  )),
               const SizedBox(height: 4),
               _ArtistLine(track: track),
               if (player.trial || (player.sourcePlatform ?? '').isNotEmpty) ...[
@@ -227,12 +268,21 @@ class _Meta extends StatelessWidget {
                 Row(
                   children: [
                     if (player.trial)
-                      Text('试听', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
-                    if (player.trial && (player.sourcePlatform ?? '').isNotEmpty) const SizedBox(width: 8),
+                      Text('试听',
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 12)),
+                    if (player.trial &&
+                        (player.sourcePlatform ?? '').isNotEmpty)
+                      const SizedBox(width: 8),
                     if ((player.sourcePlatform ?? '').isNotEmpty)
                       Text(
-                          MX.label(player.sourceKind == 'local_replacement' ? 'localfile' : player.sourcePlatform),
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                          MX.label(player.sourceKind == 'local_replacement'
+                              ? 'localfile'
+                              : player.sourcePlatform),
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 12)),
                   ],
                 ),
               ],
@@ -243,8 +293,10 @@ class _Meta extends StatelessWidget {
             ],
           ),
         ),
-        _FavoriteButton(),
-        _MoreMenu(),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, top: 2),
+          child: _FavoriteButton(),
+        ),
       ],
     );
   }
@@ -261,16 +313,21 @@ class _ArtistLine extends StatelessWidget {
       return Text(track?.artistText ?? '',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 16));
+          style:
+              TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 16));
     }
     return Wrap(
       children: [
         for (var i = 0; i < entries.length; i++) ...[
-          if (i > 0) Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 16)),
+          if (i > 0)
+            Text(' / ',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.72), fontSize: 16)),
           GestureDetector(
             onTap: () => _openArtist(context, entries[i].name, entries[i].id),
             child: Text(entries[i].name,
-                style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 16)),
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.72), fontSize: 16)),
           ),
         ],
       ],
@@ -282,7 +339,8 @@ class _ArtistLine extends StatelessWidget {
     final session = context.read<SessionStore>();
     final ui = context.read<UIStore>();
     final platform = player.track?.platform ?? '';
-    final localish = platform == 'localfile' || platform == 'files' || platform == 'local';
+    final localish =
+        platform == 'localfile' || platform == 'files' || platform == 'local';
     var artistId = (!id.isEmpty && !localish) ? id : '';
     var plat = platform;
     if (artistId.isEmpty) {
@@ -311,15 +369,19 @@ class _SourceStatusLine extends StatelessWidget {
     final player = context.watch<PlayerStore>();
     final progress = player.sourceProgress;
     if (!progress.isVisible) return const SizedBox.shrink();
-    final tint = progress.isError ? Colors.orange : Colors.white.withOpacity(0.62);
+    final tint =
+        progress.isError ? Colors.orange : Colors.white.withOpacity(0.62);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(progress.isError ? Icons.error_outline : Icons.graphic_eq, size: 13, color: tint),
+        Icon(progress.isError ? Icons.error_outline : Icons.graphic_eq,
+            size: 13, color: tint),
         const SizedBox(width: 5),
         Flexible(
           child: Text(progress.displayText,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: tint, fontSize: 11)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: tint, fontSize: 11)),
         ),
       ],
     );
@@ -339,6 +401,8 @@ class _FavoriteButton extends StatelessWidget {
 }
 
 class _MoreMenu extends StatelessWidget {
+  const _MoreMenu();
+
   @override
   Widget build(BuildContext context) {
     final player = context.read<PlayerStore>();
@@ -348,7 +412,8 @@ class _MoreMenu extends StatelessWidget {
         width: 40,
         height: 40,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.14), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.14), shape: BoxShape.circle),
         child: const Icon(Icons.more_horiz, color: Colors.white, size: 22),
       ),
       onPressed: () {
@@ -357,9 +422,11 @@ class _MoreMenu extends StatelessWidget {
         showModalBottomSheet<void>(
           context: context,
           backgroundColor: MX.panel,
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
           builder: (sheet) {
-            Widget item(String label, IconData icon, VoidCallback tap) => ListTile(
+            Widget item(String label, IconData icon, VoidCallback tap) =>
+                ListTile(
                   leading: Icon(icon, color: MX.fg),
                   title: Text(label, style: TextStyle(color: MX.fg)),
                   onTap: () {
@@ -372,18 +439,24 @@ class _MoreMenu extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   item('换源', Icons.swap_horiz, () => ui.openSource(track)),
-                  item(player.favorited ? '取消喜欢' : '喜欢',
-                      player.favorited ? Icons.star : Icons.star_border, () => player.toggleFavorite()),
+                  item(
+                      player.favorited ? '取消喜欢' : '喜欢',
+                      player.favorited ? Icons.star : Icons.star_border,
+                      () => player.toggleFavorite()),
                   item('加入歌单', Icons.playlist_add, () => ui.openPicker(track)),
                   const Divider(height: 1),
-                  item(player.shuffle ? '关闭随机播放' : '随机播放', Icons.shuffle, () => player.toggleShuffle()),
-                  item(_repeatTitle(player.repeatMode),
-                      player.repeatMode == 1 ? Icons.repeat_one : Icons.repeat, () => player.cycleRepeat()),
+                  item(player.shuffle ? '关闭随机播放' : '随机播放', Icons.shuffle,
+                      () => player.toggleShuffle()),
+                  item(
+                      _repeatTitle(player.repeatMode),
+                      player.repeatMode == 1 ? Icons.repeat_one : Icons.repeat,
+                      () => player.cycleRepeat()),
                   const Divider(height: 1),
                   if ((track.albumId ?? '').isNotEmpty)
                     item('前往专辑', Icons.album, () {
                       player.setNowPlayingOpen(false);
-                      ui.open(AlbumRoute(platform: track.platform, id: track.albumId!));
+                      ui.open(AlbumRoute(
+                          platform: track.platform, id: track.albumId!));
                     }),
                 ],
               ),
@@ -422,19 +495,29 @@ class _QueuePage extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            Text('继续播放', style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold)),
+            Text('继续播放',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold)),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(999)),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(999)),
               child: Text('${player.queue.length} 首',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(player.shuffle ? '正在随机播放队列' : '按当前顺序播放',
-            style: TextStyle(color: Colors.white.withOpacity(0.66), fontSize: 13)),
+            style:
+                TextStyle(color: Colors.white.withOpacity(0.66), fontSize: 13)),
         const SizedBox(height: 10),
         Expanded(
           child: player.queue.isEmpty
@@ -442,9 +525,11 @@ class _QueuePage extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.queue_music, color: Colors.white.withOpacity(0.5), size: 40),
+                      Icon(Icons.queue_music,
+                          color: Colors.white.withOpacity(0.5), size: 40),
                       const SizedBox(height: 8),
-                      const Text('暂无播放列表', style: TextStyle(color: Colors.white)),
+                      const Text('暂无播放列表',
+                          style: TextStyle(color: Colors.white)),
                     ],
                   ),
                 )
@@ -458,14 +543,20 @@ class _QueuePage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       onTap: () => player.jumpTo(i),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
                         decoration: BoxDecoration(
-                          color: current ? Colors.white.withOpacity(0.13) : Colors.transparent,
+                          color: current
+                              ? Colors.white.withOpacity(0.13)
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           children: [
-                            Opacity(opacity: current ? 1 : 0.86, child: CoverArt(src: track.cover, size: 50, corner: 10)),
+                            Opacity(
+                                opacity: current ? 1 : 0.86,
+                                child: CoverArt(
+                                    src: track.cover, size: 50, corner: 10)),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -476,19 +567,26 @@ class _QueuePage extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                          color: current ? Colors.white : Colors.white.withOpacity(0.9),
+                                          color: current
+                                              ? Colors.white
+                                              : Colors.white.withOpacity(0.9),
                                           fontSize: 16,
-                                          fontWeight: current ? FontWeight.bold : FontWeight.w500)),
+                                          fontWeight: current
+                                              ? FontWeight.bold
+                                              : FontWeight.w500)),
                                   const SizedBox(height: 3),
                                   Text(track.artistText,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                          color: Colors.white.withOpacity(current ? 0.72 : 0.54), fontSize: 12)),
+                                          color: Colors.white.withOpacity(
+                                              current ? 0.72 : 0.54),
+                                          fontSize: 12)),
                                 ],
                               ),
                             ),
-                            Icon(Icons.drag_handle, color: Colors.white.withOpacity(0.34)),
+                            Icon(Icons.drag_handle,
+                                color: Colors.white.withOpacity(0.34)),
                           ],
                         ),
                       ),
@@ -523,9 +621,11 @@ class _LyricsPageState extends State<_LyricsPage> {
     if (!_scroll.hasClients || index < 0 || index >= count) return;
     // Approximate row height; center the active line.
     const rowHeight = 46.0;
-    final target = (index * rowHeight - _scroll.position.viewportDimension / 2 + rowHeight)
-        .clamp(0.0, _scroll.position.maxScrollExtent);
-    _scroll.animateTo(target, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+    final target =
+        (index * rowHeight - _scroll.position.viewportDimension / 2 + rowHeight)
+            .clamp(0.0, _scroll.position.maxScrollExtent);
+    _scroll.animateTo(target,
+        duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
   }
 
   @override
@@ -534,7 +634,8 @@ class _LyricsPageState extends State<_LyricsPage> {
     final lyrics = player.lyrics;
     if (player.lyricIndex != _lastIndex) {
       _lastIndex = player.lyricIndex;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent(player.lyricIndex, lyrics.length));
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _scrollToCurrent(player.lyricIndex, lyrics.length));
     }
     return Column(
       children: [
@@ -546,7 +647,8 @@ class _LyricsPageState extends State<_LyricsPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lyrics_outlined, color: Colors.white.withOpacity(0.5), size: 40),
+                      Icon(Icons.lyrics_outlined,
+                          color: Colors.white.withOpacity(0.5), size: 40),
                       const SizedBox(height: 8),
                       const Text('暂无歌词', style: TextStyle(color: Colors.white)),
                     ],
@@ -558,14 +660,19 @@ class _LyricsPageState extends State<_LyricsPage> {
                   itemCount: lyrics.length,
                   itemBuilder: (_, i) {
                     final active = i == player.lyricIndex;
-                    final text = (lyrics[i].text?.isNotEmpty ?? false) ? lyrics[i].text! : '♪';
+                    final text = (lyrics[i].text?.isNotEmpty ?? false)
+                        ? lyrics[i].text!
+                        : '♪';
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       child: Text(text,
                           style: TextStyle(
-                              color: active ? Colors.white : Colors.white.withOpacity(0.48),
+                              color: active
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.48),
                               fontSize: active ? 19 : 16,
-                              fontWeight: active ? FontWeight.bold : FontWeight.w500)),
+                              fontWeight:
+                                  active ? FontWeight.bold : FontWeight.w500)),
                     );
                   },
                 ),
@@ -601,7 +708,8 @@ class _ProgressState extends State<_Progress> {
             inactiveTrackColor: Colors.white.withOpacity(0.24),
             thumbColor: Colors.white,
             trackHeight: widget.compact ? 2.5 : 4,
-            thumbShape: RoundSliderThumbShape(enabledThumbRadius: widget.compact ? 5 : 7),
+            thumbShape: RoundSliderThumbShape(
+                enabledThumbRadius: widget.compact ? 5 : 7),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
           ),
           child: Slider(
@@ -629,13 +737,16 @@ class _ProgressState extends State<_Progress> {
           children: [
             Text(fmt(_dragging ? _local : player.current),
                 style: TextStyle(
-                    color: Colors.white.withOpacity(widget.compact ? 0.54 : 0.62),
+                    color:
+                        Colors.white.withOpacity(widget.compact ? 0.54 : 0.62),
                     fontSize: widget.compact ? 11 : 12,
                     fontFeatures: const [FontFeature.tabularFigures()])),
             const Spacer(),
-            Text('-${fmt((player.duration - player.current).clamp(0, double.infinity))}',
+            Text(
+                '-${fmt((player.duration - player.current).clamp(0, double.infinity))}',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(widget.compact ? 0.54 : 0.62),
+                    color:
+                        Colors.white.withOpacity(widget.compact ? 0.54 : 0.62),
                     fontSize: widget.compact ? 11 : 12,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ],
@@ -663,7 +774,8 @@ class _Transport extends StatelessWidget {
           width: primary,
           height: primary,
           child: player.loading
-              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.white))
               : IconButton(
                   onPressed: () => player.toggle(),
                   icon: Icon(player.playing ? Icons.pause : Icons.play_arrow,
@@ -676,10 +788,13 @@ class _Transport extends StatelessWidget {
     );
   }
 
-  Widget _btn(IconData icon, double box, double size, VoidCallback onTap) => SizedBox(
+  Widget _btn(IconData icon, double box, double size, VoidCallback onTap) =>
+      SizedBox(
         width: box,
         height: box,
-        child: IconButton(onPressed: onTap, icon: Icon(icon, color: Colors.white, size: size)),
+        child: IconButton(
+            onPressed: onTap,
+            icon: Icon(icon, color: Colors.white, size: size)),
       );
 }
 
@@ -693,7 +808,8 @@ class _VolumeRow extends StatelessWidget {
     final player = context.watch<PlayerStore>();
     return Row(
       children: [
-        Icon(Icons.volume_down, color: Colors.white.withOpacity(0.62), size: 18),
+        Icon(Icons.volume_down,
+            color: Colors.white.withOpacity(0.62), size: 18),
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(

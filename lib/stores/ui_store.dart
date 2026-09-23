@@ -17,6 +17,7 @@ class UIStore extends ChangeNotifier {
   List<Track> organizationTracks = [];
   bool pickerOpen = false;
   Track? pickerTrack;
+  bool playerExpanded = false;
 
   AppRoute? pendingRoute;
   AppRoute? _recentRoute;
@@ -83,6 +84,12 @@ class UIStore extends ChangeNotifier {
     sourceOpen = false;
     organizationOpen = false;
     pickerOpen = false;
+    notifyListeners();
+  }
+
+  void setPlayerExpanded(bool value) {
+    if (playerExpanded == value) return;
+    playerExpanded = value;
     notifyListeners();
   }
 

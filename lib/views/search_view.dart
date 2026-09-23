@@ -6,6 +6,7 @@ import '../stores/player_store.dart';
 import '../stores/search_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
+import '../theme/glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -69,7 +70,26 @@ class _SearchViewState extends State<SearchView> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        title: Text('搜索', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
+        toolbarHeight: 72,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: MX.ember.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child:
+                  Icon(Icons.travel_explore_rounded, color: MX.ember, size: 20),
+            ),
+            const SizedBox(width: 11),
+            Text('搜索',
+                style: TextStyle(
+                    color: MX.fg, fontSize: 27, fontWeight: FontWeight.w800)),
+          ],
+        ),
       ),
       body: store == null
           ? Center(child: CircularProgressIndicator(color: MX.ember))
@@ -87,27 +107,48 @@ class _SearchViewState extends State<SearchView> {
 
   Widget _searchField(SearchStore store) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: TextField(
-        controller: _controller,
-        style: TextStyle(color: MX.fg),
-        textInputAction: TextInputAction.search,
-        onChanged: (t) {
-          store.edit(t);
-          setState(() => _showMorePlatforms = false);
-        },
-        onSubmitted: (_) {
-          store.submitDefault();
-          if (store.mode != SearchMode.suggestions) _openResults();
-        },
-        decoration: InputDecoration(
-          hintText: '搜索本地音乐、歌单或分享链接',
-          hintStyle: TextStyle(color: MX.dim),
-          prefixIcon: Icon(Icons.search, color: MX.dim),
-          filled: true,
-          fillColor: MX.fill,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(18),
+        blur: 26,
+        showShadow: false,
+        padding: EdgeInsets.zero,
+        child: TextField(
+          controller: _controller,
+          style: TextStyle(
+              color: MX.fg, fontSize: 16, fontWeight: FontWeight.w500),
+          textInputAction: TextInputAction.search,
+          onChanged: (text) {
+            store.edit(text);
+            setState(() => _showMorePlatforms = false);
+          },
+          onSubmitted: (_) {
+            store.submitDefault();
+            if (store.mode != SearchMode.suggestions) _openResults();
+          },
+          decoration: InputDecoration(
+            hintText: '歌曲、艺人、专辑、歌单或分享链接',
+            hintStyle: TextStyle(color: MX.dim, fontSize: 14),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: Icon(Icons.search_rounded, color: MX.ember, size: 23),
+            ),
+            suffixIcon: store.query.isEmpty
+                ? Icon(Icons.graphic_eq_rounded, color: MX.dimSoft, size: 19)
+                : IconButton(
+                    tooltip: '清除',
+                    onPressed: () {
+                      _controller.clear();
+                      store.edit('');
+                      setState(() => _showMorePlatforms = false);
+                    },
+                    icon: Icon(Icons.close_rounded, color: MX.dim, size: 19),
+                  ),
+            filled: true,
+            fillColor: Colors.transparent,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 17),
+          ),
         ),
       ),
     );
@@ -128,7 +169,10 @@ class _SearchViewState extends State<SearchView> {
       children.addAll(_targetSection(store));
       if (store.isShareLink) children.add(_shareLinkRow(store));
     }
-    return ListView(padding: const EdgeInsets.only(bottom: 120), children: children);
+    return ListView(
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      children: children,
+    );
   }
 
   Widget _empty(IconData icon, String title, String subtitle) => Center(
@@ -137,7 +181,9 @@ class _SearchViewState extends State<SearchView> {
           children: [
             Icon(icon, color: MX.dim, size: 40),
             const SizedBox(height: 10),
-            Text(title, style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(title,
+                style: TextStyle(
+                    color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(subtitle, style: TextStyle(color: MX.dim, fontSize: 13)),
           ],
@@ -145,12 +191,22 @@ class _SearchViewState extends State<SearchView> {
       );
 
   Widget _header(String title, IconData icon) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 10),
         child: Row(
           children: [
-            Icon(icon, size: 13, color: MX.dim),
-            const SizedBox(width: 5),
-            Text(title, style: TextStyle(color: MX.dim, fontSize: 12, fontWeight: FontWeight.w600)),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: MX.ember.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 15, color: MX.ember),
+            ),
+            const SizedBox(width: 9),
+            Text(title,
+                style: TextStyle(
+                    color: MX.fg, fontSize: 15, fontWeight: FontWeight.w700)),
           ],
         ),
       );
@@ -159,20 +215,43 @@ class _SearchViewState extends State<SearchView> {
     final out = <Widget>[_header('最近搜索', Icons.history)];
     if (store.activity.queries.isEmpty) {
       out.add(Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Text('输入关键词，先搜索已入库的音乐和自建歌单。', style: TextStyle(color: MX.dim)),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+        child: Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded, size: 18, color: MX.dim),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text('搜索记录会显示在这里',
+                  style: TextStyle(color: MX.dim, fontSize: 13)),
+            ),
+          ],
+        ),
       ));
-    }
-    for (final q in store.activity.queries) {
-      out.add(Dismissible(
-        key: ValueKey('history:$q'),
-        direction: DismissDirection.endToStart,
-        onDismissed: (_) => store.removeHistory(q),
-        background: Container(color: Colors.red.withOpacity(0.2)),
-        child: _suggestionRow(Icons.history, MX.mute, q, '最近搜索', () {
-          _controller.text = q;
-          store.openHistory(q);
-        }),
+    } else {
+      out.add(Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final query in store.activity.queries)
+              InputChip(
+                avatar: Icon(Icons.history_rounded, size: 15, color: MX.ember),
+                label: Text(query),
+                labelStyle: TextStyle(color: MX.fg, fontSize: 12.5),
+                backgroundColor: MX.panel,
+                deleteIcon: Icon(Icons.close_rounded, size: 15, color: MX.dim),
+                side: BorderSide(color: MX.hairline),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                onPressed: () {
+                  _controller.text = query;
+                  store.openHistory(query);
+                },
+                onDeleted: () => store.removeHistory(query),
+              ),
+          ],
+        ),
       ));
     }
     return out;
@@ -183,30 +262,122 @@ class _SearchViewState extends State<SearchView> {
       _header('按曲风探索', Icons.grid_view),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 2.4,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          children: [
-            for (final genre in Genre.commonCatalog)
-              InkWell(
-                onTap: () => context.read<UIStore>().open(GenreRoute(platform: genre.platform, id: genre.id)),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(color: MX.fillSoft, borderRadius: BorderRadius.circular(12)),
-                  child: Text(genre.name,
-                      style: TextStyle(color: MX.fg, fontSize: 15, fontWeight: FontWeight.w600)),
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 720
+                ? 4
+                : constraints.maxWidth >= 520
+                    ? 3
+                    : 2;
+            return GridView.builder(
+              itemCount: Genre.commonCatalog.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                childAspectRatio: 2.35,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
               ),
-          ],
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, index) =>
+                  _genreTile(Genre.commonCatalog[index]),
+            );
+          },
         ),
       ),
     ];
+  }
+
+  Widget _genreTile(Genre genre) {
+    final visual = _genreVisual(genre.id);
+    return Material(
+      color: MX.panel,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => context
+            .read<UIStore>()
+            .open(GenreRoute(platform: genre.platform, id: genre.id)),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: visual.$2.withOpacity(0.18)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: visual.$2.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(visual.$1, color: visual.$2, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  genre.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: MX.fg,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  (IconData, Color) _genreVisual(String id) {
+    final key = id.split(':').last;
+    switch (key) {
+      case 'pop':
+      case 'chinese-pop':
+        return (Icons.auto_awesome_rounded, const Color(0xFFED5A6B));
+      case 'rock':
+      case 'metal':
+      case 'punk':
+        return (Icons.electric_bolt_rounded, const Color(0xFFE18532));
+      case 'hip-hop':
+      case 'rap':
+        return (Icons.mic_rounded, const Color(0xFF8B6BD6));
+      case 'rnb':
+      case 'soul':
+      case 'blues':
+        return (Icons.favorite_rounded, const Color(0xFFD85D91));
+      case 'electronic':
+        return (Icons.graphic_eq_rounded, const Color(0xFF36A7C8));
+      case 'folk':
+      case 'country':
+        return (Icons.nature_people_rounded, const Color(0xFF4C9A73));
+      case 'gu-feng':
+      case 'world':
+        return (Icons.public_rounded, const Color(0xFFB87942));
+      case 'classical':
+      case 'instrumental':
+        return (Icons.piano_rounded, const Color(0xFF6776C8));
+      case 'jazz':
+        return (Icons.nightlife_rounded, const Color(0xFFB16CB8));
+      case 'reggae':
+        return (Icons.wb_sunny_rounded, const Color(0xFF4B9D68));
+      case 'easy-listening':
+        return (Icons.spa_rounded, const Color(0xFF48A596));
+      case 'soundtrack':
+        return (Icons.movie_filter_rounded, const Color(0xFF547EBE));
+      case 'acg':
+      case 'japanese-pop':
+      case 'korean-pop':
+        return (Icons.animation_rounded, const Color(0xFFE16C96));
+      default:
+        return (Icons.music_note_rounded, MX.ember);
+    }
   }
 
   List<Widget> _localSections(SearchStore store) {
@@ -215,7 +386,11 @@ class _SearchViewState extends State<SearchView> {
       out.add(Padding(
         padding: const EdgeInsets.all(16),
         child: Row(children: [
-          SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: MX.ember)),
+          SizedBox(
+              width: 18,
+              height: 18,
+              child:
+                  CircularProgressIndicator(strokeWidth: 2, color: MX.ember)),
           const SizedBox(width: 10),
           Text('搜索本地资料…', style: TextStyle(color: MX.dim)),
         ]),
@@ -241,8 +416,14 @@ class _SearchViewState extends State<SearchView> {
         }
       }
       for (final artist in result.artists ?? []) {
-        out.add(_suggestionRow(Icons.person, MX.mute, artist.displayName, '艺人',
-            () => context.read<UIStore>().open(ArtistRoute(platform: artist.platform, id: artist.id))));
+        out.add(_suggestionRow(
+            Icons.person,
+            MX.mute,
+            artist.displayName,
+            '艺人',
+            () => context
+                .read<UIStore>()
+                .open(ArtistRoute(platform: artist.platform, id: artist.id))));
       }
       for (final album in result.albums ?? []) {
         final route = AlbumRoute(platform: album.platform, id: album.id);
@@ -261,7 +442,9 @@ class _SearchViewState extends State<SearchView> {
         final route = PlaylistRoute(
             platform: playlist.platform ?? 'local',
             id: playlist.id,
-            kind: playlist.platform == 'local' ? ListKind.mine : ListKind.platform,
+            kind: playlist.platform == 'local'
+                ? ListKind.mine
+                : ListKind.platform,
             fromLibrary: false);
         out.add(Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -271,7 +454,9 @@ class _SearchViewState extends State<SearchView> {
             title: playlist.displayTitle,
             subtitle: playlist.trackCount != null
                 ? '${playlist.trackCount} 首'
-                : (playlist.platform == 'local' ? '自建歌单' : MX.label(playlist.platform)),
+                : (playlist.platform == 'local'
+                    ? '自建歌单'
+                    : MX.label(playlist.platform)),
             platform: playlist.platform,
             route: route,
           ),
@@ -312,7 +497,11 @@ class _SearchViewState extends State<SearchView> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(children: [
-            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: MX.ember)),
+            SizedBox(
+                width: 16,
+                height: 16,
+                child:
+                    CircularProgressIndicator(strokeWidth: 2, color: MX.ember)),
             const SizedBox(width: 10),
             Text('正在${t.name}搜索…', style: TextStyle(color: MX.dim)),
           ]),
@@ -327,9 +516,13 @@ class _SearchViewState extends State<SearchView> {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
       child: Row(
         children: [
-          PlatformMarkBadge(platform: target.kind == 'source' ? 'source' : target.platform, size: 18),
+          PlatformMarkBadge(
+              platform: target.kind == 'source' ? 'source' : target.platform,
+              size: 18),
           const SizedBox(width: 6),
-          Text(target.name, style: TextStyle(color: MX.dim, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(target.name,
+              style: TextStyle(
+                  color: MX.dim, fontSize: 12, fontWeight: FontWeight.w600)),
           const Spacer(),
           GestureDetector(
             onTap: () {
@@ -338,7 +531,11 @@ class _SearchViewState extends State<SearchView> {
             },
             child: Row(
               children: [
-                Text('查看全部', style: TextStyle(color: MX.ember, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text('查看全部',
+                    style: TextStyle(
+                        color: MX.ember,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
                 Icon(Icons.chevron_right, color: MX.ember, size: 16),
               ],
             ),
@@ -360,7 +557,11 @@ class _SearchViewState extends State<SearchView> {
       out.add(Padding(
         padding: const EdgeInsets.all(16),
         child: Row(children: [
-          SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: MX.ember)),
+          SizedBox(
+              width: 18,
+              height: 18,
+              child:
+                  CircularProgressIndicator(strokeWidth: 2, color: MX.ember)),
           const SizedBox(width: 10),
           Text('加载可用平台…', style: TextStyle(color: MX.dim)),
         ]),
@@ -419,7 +620,10 @@ class _SearchViewState extends State<SearchView> {
                   Text(target.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: MX.fg, fontSize: 15, fontWeight: FontWeight.w500)),
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
                   Text(subtitle,
                       maxLines: 1,
@@ -472,9 +676,15 @@ class _SearchViewState extends State<SearchView> {
                   Text(track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 3),
-                  Text(track.artistText.isEmpty ? MX.label(track.platform) : '${track.artistText} · ${MX.label(track.platform)}',
+                  Text(
+                      track.artistText.isEmpty
+                          ? MX.label(track.platform)
+                          : '${track.artistText} · ${MX.label(track.platform)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: MX.dim, fontSize: 13)),
@@ -485,8 +695,9 @@ class _SearchViewState extends State<SearchView> {
               width: 34,
               height: 34,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: MX.ember, shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+              decoration:
+                  BoxDecoration(color: MX.ember, shape: BoxShape.circle),
+              child: Icon(Icons.play_arrow, color: MX.onAccent, size: 20),
             ),
           ],
         ),
@@ -502,7 +713,8 @@ class _SearchViewState extends State<SearchView> {
             Row(children: [
               Icon(Icons.warning_amber, color: MX.fg, size: 18),
               const SizedBox(width: 6),
-              Text(title, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
+              Text(title,
+                  style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
             ]),
             const SizedBox(height: 6),
             Text(message, style: TextStyle(color: MX.dim, fontSize: 13)),
@@ -512,7 +724,8 @@ class _SearchViewState extends State<SearchView> {
         ),
       );
 
-  Widget _suggestionRow(IconData icon, Color tone, String title, String? detail, VoidCallback onTap,
+  Widget _suggestionRow(IconData icon, Color tone, String title, String? detail,
+      VoidCallback onTap,
       {bool chevron = true}) {
     return InkWell(
       onTap: onTap,
@@ -524,7 +737,9 @@ class _SearchViewState extends State<SearchView> {
               width: 32,
               height: 32,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: tone.withOpacity(0.14), borderRadius: BorderRadius.circular(9)),
+              decoration: BoxDecoration(
+                  color: tone.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(9)),
               child: Icon(icon, size: 17, color: tone),
             ),
             const SizedBox(width: 12),

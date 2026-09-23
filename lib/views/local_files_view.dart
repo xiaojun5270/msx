@@ -127,7 +127,8 @@ class _LocalFilesViewState extends State<LocalFilesView> {
                       ),
                       Expanded(
                         child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 120),
+                          padding: EdgeInsets.fromLTRB(
+                              12, 4, 12, MediaQuery.paddingOf(context).bottom),
                           itemCount: _visible.length,
                           itemBuilder: (_, i) => _row(_visible[i], ui),
                         ),

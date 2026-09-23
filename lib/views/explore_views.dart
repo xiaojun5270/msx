@@ -894,7 +894,8 @@ class _FavoritesViewState extends State<FavoritesView> {
     switch (_tab) {
       case 'album':
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 4, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _albums.length,
           itemBuilder: (_, i) {
             final a = _albums[i];
@@ -905,7 +906,8 @@ class _FavoritesViewState extends State<FavoritesView> {
         );
       case 'artist':
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 4, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _artists.length,
           itemBuilder: (_, i) {
             final a = _artists[i];
@@ -916,7 +918,8 @@ class _FavoritesViewState extends State<FavoritesView> {
         );
       case 'playlist':
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 4, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _playlists.length,
           itemBuilder: (_, i) {
             final p = _playlists[i];
@@ -928,7 +931,8 @@ class _FavoritesViewState extends State<FavoritesView> {
       default:
         if (_tracks.isEmpty) return _emptyState(Icons.favorite_border, '还没有收藏歌曲');
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 4, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _tracks.length,
           itemBuilder: (_, i) => TrackRow(track: _tracks[i], index: i, queue: _tracks),
         );

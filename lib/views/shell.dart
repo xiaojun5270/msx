@@ -105,6 +105,16 @@ class _MobileShellState extends State<MobileShell> {
   Widget build(BuildContext context) {
     final ui = context.watch<UIStore>();
     final player = context.watch<PlayerStore>();
+    final media = MediaQuery.of(context);
+    final safeBottom = media.padding.bottom > 8 ? media.padding.bottom : 8.0;
+    final navExtent = 58.0 + safeBottom;
+    final playerExtent = player.track == null
+        ? 0.0
+        : (ui.playerExpanded ? 169.0 : 88.0);
+    final contentBottomInset = navExtent + playerExtent + 16;
+    final bodyMedia = media.copyWith(
+      padding: media.padding.copyWith(bottom: contentBottomInset),
+    );
 
     // Route intents raised anywhere (deep links, in-view navigation) are
     // pushed onto the active tab's stack after the frame commits.
@@ -125,10 +135,13 @@ class _MobileShellState extends State<MobileShell> {
       children: [
         Scaffold(
           backgroundColor: Colors.transparent,
-          extendBody: false,
-          body: IndexedStack(
-            index: _order.indexOf(_tab),
-            children: [for (final t in _order) _tabNavigator(t)],
+          extendBody: true,
+          body: MediaQuery(
+            data: bodyMedia,
+            child: IndexedStack(
+              index: _order.indexOf(_tab),
+              children: [for (final t in _order) _tabNavigator(t)],
+            ),
           ),
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
@@ -237,10 +250,8 @@ class _TabBar extends StatelessWidget {
           EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 8),
       child: GlassSurface(
         borderRadius: BorderRadius.circular(32),
-        blur: 42,
-        tint: dark
-            ? const Color.fromRGBO(255, 255, 255, 0.06)
-            : const Color.fromRGBO(255, 255, 255, 0.28),
+        blur: 18,
+        tint: const Color.fromRGBO(255, 255, 255, 0.10),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         showBorder: false,
         showHighlight: false,

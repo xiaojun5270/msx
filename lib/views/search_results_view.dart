@@ -71,7 +71,8 @@ class _SearchResultsViewState extends State<SearchResultsView> {
         backgroundColor: MX.panel,
         onRefresh: () async => store.retryRemote(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 12, 16, MediaQuery.paddingOf(context).bottom),
           children: [
             _tabCapsules(store),
             const SizedBox(height: 14),

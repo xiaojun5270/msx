@@ -20,11 +20,10 @@ class MiniPlayer extends StatefulWidget {
 }
 
 class _MiniPlayerState extends State<MiniPlayer> {
-  bool _expanded = false;
-
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerStore>();
+    final ui = context.watch<UIStore>();
     final session = context.read<SessionStore>();
     final dark = Theme.of(context).brightness == Brightness.dark;
     final track = player.track;
@@ -36,6 +35,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
     final duration = player.duration > 0 ? player.duration : track.duration;
     final current =
         duration > 0 ? player.current.clamp(0.0, duration).toDouble() : 0.0;
+    final expanded = ui.playerExpanded;
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 260),
@@ -46,15 +46,13 @@ class _MiniPlayerState extends State<MiniPlayer> {
         child: GestureDetector(
           onVerticalDragEnd: (details) {
             final velocity = details.primaryVelocity ?? 0;
-            if (velocity < -180 && !_expanded) setState(() => _expanded = true);
-            if (velocity > 180 && _expanded) setState(() => _expanded = false);
+            if (velocity < -180 && !expanded) ui.setPlayerExpanded(true);
+            if (velocity > 180 && expanded) ui.setPlayerExpanded(false);
           },
           child: GlassSurface(
-            borderRadius: BorderRadius.circular(_expanded ? 28 : 34),
+            borderRadius: BorderRadius.circular(expanded ? 28 : 34),
             blur: 42,
-            tint: dark
-                ? const Color.fromRGBO(255, 255, 255, 0.08)
-                : const Color.fromRGBO(255, 255, 255, 0.30),
+            tint: const Color.fromRGBO(255, 255, 255, 0.10),
             showBorder: false,
             child: Stack(
               children: [
@@ -85,12 +83,12 @@ class _MiniPlayerState extends State<MiniPlayer> {
                         end: Alignment.bottomRight,
                         colors: dark
                             ? [
-                                Colors.black.withOpacity(0.04),
-                                Colors.black.withOpacity(0.17),
+                                Colors.black.withOpacity(0.02),
+                                Colors.black.withOpacity(0.10),
                               ]
                             : [
-                                Colors.white.withOpacity(0.03),
-                                Colors.white.withOpacity(0.18),
+                                Colors.white.withOpacity(0.02),
+                                Colors.white.withOpacity(0.10),
                               ],
                       ),
                     ),
@@ -100,7 +98,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
                   duration: const Duration(milliseconds: 220),
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
-                  child: _expanded
+                  child: expanded
                       ? _expandedPlayer(
                           context,
                           player,
@@ -148,7 +146,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => setState(() => _expanded = true),
+                onTap: () => context.read<UIStore>().setPlayerExpanded(true),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Column(
@@ -255,7 +253,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
               ),
               IconButton(
                 tooltip: '收起播放器',
-                onPressed: () => setState(() => _expanded = false),
+                onPressed: () =>
+                    context.read<UIStore>().setPlayerExpanded(false),
                 icon: Icon(Icons.keyboard_arrow_down_rounded,
                     color: MX.fg, size: 28),
               ),

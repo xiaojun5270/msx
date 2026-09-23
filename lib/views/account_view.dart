@@ -109,7 +109,8 @@ class _AccountViewState extends State<AccountView> {
         backgroundColor: MX.panel,
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 12, 16, MediaQuery.paddingOf(context).bottom),
           children: [
             _hero(session),
             const SizedBox(height: 24),

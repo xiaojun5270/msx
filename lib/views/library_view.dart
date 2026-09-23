@@ -218,7 +218,8 @@ class _LibraryViewState extends State<LibraryView> {
         backgroundColor: MX.panel,
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
+          padding: EdgeInsets.fromLTRB(
+              20, 4, 20, MediaQuery.paddingOf(context).bottom),
           children: [
             _categoryList(),
             const SizedBox(height: 32),
@@ -672,7 +673,8 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
       childAspectRatio: 0.72,
       crossAxisSpacing: 14,
       mainAxisSpacing: 18,
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+      padding: EdgeInsets.fromLTRB(
+          16, 20, 16, MediaQuery.paddingOf(context).bottom),
       children: [
         for (final item in _items)
           GestureDetector(
@@ -708,7 +710,8 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
       childAspectRatio: 0.72,
       crossAxisSpacing: 14,
       mainAxisSpacing: 18,
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+      padding: EdgeInsets.fromLTRB(
+          16, 20, 16, MediaQuery.paddingOf(context).bottom),
       children: [
         for (final a in _albums)
           GestureDetector(
@@ -728,7 +731,8 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
   Widget _artistList() {
     if (_artists.isEmpty) return _empty(Icons.mic_none, '还没有收藏艺人', '在艺人页点收藏后会出现在这里');
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      padding: EdgeInsets.fromLTRB(
+          16, 8, 16, MediaQuery.paddingOf(context).bottom),
       itemCount: _artists.length,
       itemBuilder: (_, i) {
         final a = _artists[i];
@@ -756,7 +760,8 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
   Widget _songList() {
     if (_tracks.isEmpty) return _empty(Icons.music_note, '还没有收藏歌曲', '把喜欢的歌曲收藏后会出现在这里');
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      padding: EdgeInsets.fromLTRB(
+          16, 8, 16, MediaQuery.paddingOf(context).bottom),
       itemCount: _tracks.length,
       itemBuilder: (_, i) => TrackRow(track: _tracks[i], index: i, queue: _tracks),
     );
@@ -1014,7 +1019,8 @@ class _RecentsViewState extends State<RecentsView> {
     switch (_tab) {
       case 'album':
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 8, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _albums.length,
           itemBuilder: (_, i) {
             final a = _albums[i];
@@ -1035,7 +1041,8 @@ class _RecentsViewState extends State<RecentsView> {
         );
       case 'artist':
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 8, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _artists.length,
           itemBuilder: (_, i) {
             final a = _artists[i];
@@ -1057,7 +1064,8 @@ class _RecentsViewState extends State<RecentsView> {
         );
       case 'playlist':
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 8, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _playlists.length,
           itemBuilder: (_, i) {
             final p = _playlists[i];
@@ -1079,7 +1087,8 @@ class _RecentsViewState extends State<RecentsView> {
         );
       default:
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+              16, 8, 16, MediaQuery.paddingOf(context).bottom),
           itemCount: _tracks.length,
           itemBuilder: (_, i) {
             final t = _tracks[i];
