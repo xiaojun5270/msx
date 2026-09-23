@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../api/api_client.dart';
 import '../api/source_management.dart';
+import '../local/app_log.dart';
 import '../models/models.dart';
 import 'session_store.dart';
 import 'ui_store.dart';
@@ -48,7 +49,8 @@ class PlayerStore extends ChangeNotifier {
   /// update `current`, to avoid the thumb jumping. Mirrors Swift `isSeeking`.
   bool isSeeking = false;
 
-  Track? get track => (index >= 0 && index < queue.length) ? queue[index] : null;
+  Track? get track =>
+      (index >= 0 && index < queue.length) ? queue[index] : null;
 
   /// Open/close the full Now Playing surface. Mirrors the Swift
   /// `nowPlayingOpen` binding used by RootView's fullScreenCover.
@@ -108,6 +110,38 @@ class PlayerStore extends ChangeNotifier {
   void _setWantsPlayback(bool value) {
     if (_wantsPlayback != value) _controlRevision += 1;
     _wantsPlayback = value;
+  }
+
+  void _startEnginePlayback(int generation) {
+    final task =
+        _av.play().catchError((Object error, StackTrace stackTrace) async {
+      await _handleEnginePlaybackError(generation, error);
+    });
+    unawaited(task);
+  }
+
+  Future<void> _handleEnginePlaybackError(int generation, Object error) async {
+    if (generation != _token) return;
+    LocalLogStore.shared.error(
+      AppLogCategory.player,
+      'engine.play_failed',
+      fields: {
+        'track': track?.key ?? '',
+        'error': error.toString(),
+        'recovering': '$_recovering',
+      },
+    );
+    if (!_recovering && index >= 0 && index < queue.length) {
+      await _playAt(index, position: current, autoplay: true, recover: true);
+      return;
+    }
+    loading = false;
+    _setWantsPlayback(false);
+    playing = false;
+    final message = _describeError(error);
+    _setSourceProgress(PlaybackSourcePhase.failed, detail: message);
+    _ui?.notify(message);
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -197,12 +231,15 @@ class PlayerStore extends ChangeNotifier {
 
     if (sourceProgress.phase != PlaybackSourcePhase.failed) {
       if (live) {
-        sourceProgress = PlaybackSourceProgress(phase: PlaybackSourcePhase.playing);
+        sourceProgress =
+            PlaybackSourceProgress(phase: PlaybackSourcePhase.playing);
       } else if (!loading && _av.processingState != ProcessingState.idle) {
-        final buffering = _wantsPlayback &&
-            _av.processingState == ProcessingState.buffering;
+        final buffering =
+            _wantsPlayback && _av.processingState == ProcessingState.buffering;
         sourceProgress = PlaybackSourceProgress(
-            phase: buffering ? PlaybackSourcePhase.buffering : PlaybackSourcePhase.ready);
+            phase: buffering
+                ? PlaybackSourcePhase.buffering
+                : PlaybackSourcePhase.ready);
       }
     }
 
@@ -264,7 +301,7 @@ class PlayerStore extends ChangeNotifier {
     }
     _setWantsPlayback(true);
     final generation = _token;
-    unawaited(_av.play());
+    _startEnginePlayback(generation);
     if (generation != _token || !_wantsPlayback) return;
     _syncPlaybackState();
     _publishNowPlaying();
@@ -344,10 +381,14 @@ class PlayerStore extends ChangeNotifier {
     if (session != null) {
       () async {
         if (intentID != null) {
-          await session.api.delete('/api/playback/intents/$intentID').catchError((_) {});
+          await session.api
+              .delete('/api/playback/intents/$intentID')
+              .catchError((_) {});
         }
         if (sessionID != null) {
-          await session.api.delete('/api/playback/sessions/$sessionID').catchError((_) {});
+          await session.api
+              .delete('/api/playback/sessions/$sessionID')
+              .catchError((_) {});
         }
       }();
     }
@@ -401,8 +442,10 @@ class PlayerStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> replaceQueue(List<Track> tracks, {required int start, PlaySource? source}) async {
-    final items = tracks.where((t) => t.title.isNotEmpty || t.id.isNotEmpty).toList();
+  Future<void> replaceQueue(List<Track> tracks,
+      {required int start, PlaySource? source}) async {
+    final items =
+        tracks.where((t) => t.title.isNotEmpty || t.id.isNotEmpty).toList();
     if (items.isEmpty) return;
     final i = start.clamp(0, items.length - 1);
     final reuses = _canReuseCurrentPlayback(items[i]);
@@ -422,7 +465,8 @@ class PlayerStore extends ChangeNotifier {
 
   Future<void> jumpTo(int idx) async {
     if (idx < 0 || idx >= queue.length) return;
-    if (await _reuseCurrentPlaybackIfPossible(queue[idx], restart: true)) return;
+    if (await _reuseCurrentPlaybackIfPossible(queue[idx], restart: true))
+      return;
     await _playAt(idx);
   }
 
@@ -463,7 +507,8 @@ class PlayerStore extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> _reuseCurrentPlaybackIfPossible(Track item, {required bool restart}) async {
+  Future<bool> _reuseCurrentPlaybackIfPossible(Track item,
+      {required bool restart}) async {
     if (!_canReuseCurrentPlayback(item)) return false;
     final generation = _token;
     if (restart) {
@@ -478,8 +523,10 @@ class PlayerStore extends ChangeNotifier {
       return true;
     }
     _setWantsPlayback(true);
-    unawaited(_av.play());
-    if (generation != _token || !_wantsPlayback || !_canReuseCurrentPlayback(item)) return false;
+    _startEnginePlayback(generation);
+    if (generation != _token ||
+        !_wantsPlayback ||
+        !_canReuseCurrentPlayback(item)) return false;
     _syncPlaybackState();
     _publishNowPlaying();
     return true;
@@ -518,7 +565,8 @@ class PlayerStore extends ChangeNotifier {
         .where((p) => !PlaybackSessionReusePolicy.isFresh(p.createdAt))
         .toList();
     for (final entry in stale) {
-      _removeRetainedPlayback(entry.trackKey, expectedCreatedAt: entry.createdAt, discard: true);
+      _removeRetainedPlayback(entry.trackKey,
+          expectedCreatedAt: entry.createdAt, discard: true);
     }
     final replaced = _retained[playback.trackKey];
     _retained[playback.trackKey] = playback;
@@ -526,8 +574,10 @@ class PlayerStore extends ChangeNotifier {
       _discardRetainedPlayback(replaced);
     }
     _retainedExpiry.remove(playback.trackKey)?.cancel();
-    _retainedExpiry[playback.trackKey] = Timer(PlaybackSessionReusePolicy.lifetime, () {
-      _removeRetainedPlayback(playback.trackKey, expectedCreatedAt: playback.createdAt, discard: true);
+    _retainedExpiry[playback.trackKey] =
+        Timer(PlaybackSessionReusePolicy.lifetime, () {
+      _removeRetainedPlayback(playback.trackKey,
+          expectedCreatedAt: playback.createdAt, discard: true);
     });
     final overflow = _retained.values.toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -549,10 +599,12 @@ class PlayerStore extends ChangeNotifier {
     return retained;
   }
 
-  void _removeRetainedPlayback(String key, {DateTime? expectedCreatedAt, required bool discard}) {
+  void _removeRetainedPlayback(String key,
+      {DateTime? expectedCreatedAt, required bool discard}) {
     final retained = _retained[key];
     if (retained == null) return;
-    if (expectedCreatedAt != null && retained.createdAt != expectedCreatedAt) return;
+    if (expectedCreatedAt != null && retained.createdAt != expectedCreatedAt)
+      return;
     _retained.remove(key);
     _retainedExpiry.remove(key)?.cancel();
     if (discard) _discardRetainedPlayback(retained);
@@ -566,18 +618,27 @@ class PlayerStore extends ChangeNotifier {
     if (intentID == null && sessionID == null) return;
     () async {
       if (intentID != null) {
-        await session.api.delete('/api/playback/intents/$intentID').catchError((_) {});
+        await session.api
+            .delete('/api/playback/intents/$intentID')
+            .catchError((_) {});
       }
       if (sessionID != null) {
-        await session.api.delete('/api/playback/sessions/$sessionID').catchError((_) {});
+        await session.api
+            .delete('/api/playback/sessions/$sessionID')
+            .catchError((_) {});
       }
     }();
   }
 
   Future<bool> _restoreRetainedPlayback(_RetainedPlayback retained,
-      {required int idx, required double position, required bool autoplay}) async {
+      {required int idx,
+      required double position,
+      required bool autoplay}) async {
     final session = _session;
-    if (session == null || idx < 0 || idx >= queue.length || retained.trackKey != queue[idx].key) {
+    if (session == null ||
+        idx < 0 ||
+        idx >= queue.length ||
+        retained.trackKey != queue[idx].key) {
       _discardRetainedPlayback(retained);
       return false;
     }
@@ -607,7 +668,12 @@ class PlayerStore extends ChangeNotifier {
         AudioSource.uri(retained.url, headers: retained.headers),
         initialPosition: Duration(milliseconds: (current * 1000).round()),
       );
-    } catch (_) {
+    } catch (error) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.player,
+        'retained_source.restore_failed',
+        fields: {'track': retained.trackKey, 'error': error.toString()},
+      );
       _discardRetainedPlayback(retained);
       return false;
     }
@@ -618,7 +684,7 @@ class PlayerStore extends ChangeNotifier {
     _applyVolume();
     if (autoplay) {
       if (mine != _token) return true;
-      unawaited(_av.play());
+      _startEnginePlayback(mine);
     }
     _syncPlaybackState();
     _publishNowPlaying();
@@ -639,9 +705,11 @@ class PlayerStore extends ChangeNotifier {
   /// return its AAC/M4A playback representation. Mirrors Swift.
   static bool _libraryFileDirectPlayable(String raw, Track track) {
     final decoded = Uri.decodeFull(raw);
-    if (!decoded.contains('/api/library/file?') || !decoded.contains('path=')) return false;
+    if (!decoded.contains('/api/library/file?') || !decoded.contains('path='))
+      return false;
     final haystack = '$decoded ${track.id} ${track.title}'.toLowerCase();
-    if (['.flac', '.flc', '.ogg', '.opus', '.ape', '.wma'].any(haystack.contains)) {
+    if (['.flac', '.flc', '.ogg', '.opus', '.ape', '.wma']
+        .any(haystack.contains)) {
       return false;
     }
     return ['.mp3', '.m4a', '.aac', '.wav', '.mp4'].any(haystack.contains);
@@ -657,7 +725,8 @@ class PlayerStore extends ChangeNotifier {
     return headers;
   }
 
-  Future<void> _playAt(int idx, {double position = 0, bool autoplay = true, bool recover = false}) async {
+  Future<void> _playAt(int idx,
+      {double position = 0, bool autoplay = true, bool recover = false}) async {
     final session = _session;
     if (session == null || idx < 0 || idx >= queue.length) return;
 
@@ -666,7 +735,8 @@ class PlayerStore extends ChangeNotifier {
     if (!recover) {
       final retained = _takeRetainedPlayback(queue[idx]);
       if (retained != null &&
-          await _restoreRetainedPlayback(retained, idx: idx, position: position, autoplay: autoplay)) {
+          await _restoreRetainedPlayback(retained,
+              idx: idx, position: position, autoplay: autoplay)) {
         return;
       }
     }
@@ -674,6 +744,15 @@ class PlayerStore extends ChangeNotifier {
     _retainCurrentPlaybackIfPossible();
     index = idx;
     final row = queue[idx];
+    LocalLogStore.shared.info(
+      AppLogCategory.player,
+      'playback.requested',
+      fields: {
+        'track': row.key,
+        'platform': row.platform,
+        'recover': '$recover',
+      },
+    );
     _token += 1;
     final mine = _token;
     if (!recover) {
@@ -716,7 +795,8 @@ class PlayerStore extends ChangeNotifier {
         final until = DateTime.tryParse(raw);
         if (until != null) {
           final secs = until.difference(DateTime.now()).inMilliseconds / 1000.0;
-          deadline = DateTime.now().add(Duration(milliseconds: (secs.clamp(1, 900) * 1000).round()));
+          deadline = DateTime.now()
+              .add(Duration(milliseconds: (secs.clamp(1, 900) * 1000).round()));
         }
       }
     }
@@ -727,10 +807,14 @@ class PlayerStore extends ChangeNotifier {
           (p.sessionID != null && p.sessionID == oldSession));
       if (!retainsOldTransport) {
         if (oldIntent != null) {
-          await session.api.delete('/api/playback/intents/$oldIntent').catchError((_) {});
+          await session.api
+              .delete('/api/playback/intents/$oldIntent')
+              .catchError((_) {});
         }
         if (oldSession != null) {
-          await session.api.delete('/api/playback/sessions/$oldSession').catchError((_) {});
+          await session.api
+              .delete('/api/playback/sessions/$oldSession')
+              .catchError((_) {});
         }
       }
       if (mine != _token) return;
@@ -746,14 +830,18 @@ class PlayerStore extends ChangeNotifier {
         selectedSourceKey = 'localfile::${row.id}';
         playURL = session.api.absolute(rawStream)!;
       } else {
-        var result = await session.api.createPlaybackSession(row, intentId: intentID, recover: recover);
+        var result = await session.api
+            .createPlaybackSession(row, intentId: intentID, recover: recover);
         createdSessionID = result.sessionId;
         acceptDeadline(result);
         if (result.isWaiting) {
           _setSourceProgress(PlaybackSourcePhase.preparing,
-              detail: PlaybackSourceProgress.preparationDetail(status: result.status, reason: result.reason));
+              detail: PlaybackSourceProgress.preparationDetail(
+                  status: result.status, reason: result.reason));
         }
-        while (result.isWaiting && DateTime.now().isBefore(deadline) && mine == _token) {
+        while (result.isWaiting &&
+            DateTime.now().isBefore(deadline) &&
+            mine == _token) {
           await Future.delayed(const Duration(milliseconds: 400));
           if (mine != _token || !DateTime.now().isBefore(deadline)) break;
           result = await session.api.pollPlaybackIntent(intentID);
@@ -761,17 +849,23 @@ class PlayerStore extends ChangeNotifier {
           acceptDeadline(result);
           if (result.isWaiting) {
             _setSourceProgress(PlaybackSourcePhase.preparing,
-                detail: PlaybackSourceProgress.preparationDetail(status: result.status, reason: result.reason));
+                detail: PlaybackSourceProgress.preparationDetail(
+                    status: result.status, reason: result.reason));
           }
         }
         if (mine != _token) {
-          await session.api.delete('/api/playback/intents/$intentID').catchError((_) {});
+          await session.api
+              .delete('/api/playback/intents/$intentID')
+              .catchError((_) {});
           if (result.sessionId != null) {
-            await session.api.delete('/api/playback/sessions/${result.sessionId}').catchError((_) {});
+            await session.api
+                .delete('/api/playback/sessions/${result.sessionId}')
+                .catchError((_) {});
           }
           return;
         }
-        if (!DateTime.now().isBefore(deadline)) throw const ApiError('播放准备超时，请重试');
+        if (!DateTime.now().isBefore(deadline))
+          throw const ApiError('播放准备超时，请重试');
         _playbackSessionID = result.sessionId;
         sourceKind = result.sourceKind;
         sourcePlatform = result.sourcePlatform;
@@ -779,10 +873,14 @@ class PlayerStore extends ChangeNotifier {
         trial = result.isPreview;
         _recordingCorrespondence = result.recordingCorrespondence;
         if (result.sourcePlatform != null && result.sourceTrackId != null) {
-          selectedSourceKey = '${result.sourcePlatform}::${result.sourceTrackId}';
+          selectedSourceKey =
+              '${result.sourcePlatform}::${result.sourceTrackId}';
         }
-        final resolved = result.streamUrl == null ? null : session.api.absolute(result.streamUrl);
-        final okTransport = !result.hasTransport || result.playbackKind == 'http';
+        final resolved = result.streamUrl == null
+            ? null
+            : session.api.absolute(result.streamUrl);
+        final okTransport =
+            !result.hasTransport || result.playbackKind == 'http';
         if (result.status != 'ready' || !okTransport || resolved == null) {
           loading = false;
           _setWantsPlayback(false);
@@ -790,9 +888,13 @@ class PlayerStore extends ChangeNotifier {
               ? '此音源传输方式暂不支持，请选择其他完整音源'
               : '${result.reason ?? '音源准备中'}，请重试播放或换源';
           _setSourceProgress(PlaybackSourcePhase.failed, detail: message);
-          await session.api.delete('/api/playback/intents/$intentID').catchError((_) {});
+          await session.api
+              .delete('/api/playback/intents/$intentID')
+              .catchError((_) {});
           if (result.sessionId != null) {
-            await session.api.delete('/api/playback/sessions/${result.sessionId}').catchError((_) {});
+            await session.api
+                .delete('/api/playback/sessions/${result.sessionId}')
+                .catchError((_) {});
           }
           if (mine != _token) return;
           _ui?.notify(message);
@@ -823,9 +925,18 @@ class PlayerStore extends ChangeNotifier {
         if (d.isFinite && d > 0) duration = d;
       }
       _applyVolume();
+      LocalLogStore.shared.info(
+        AppLogCategory.player,
+        'playback.source_ready',
+        fields: {
+          'track': row.key,
+          'source': sourcePlatform ?? sourceKind ?? 'unknown',
+          'host': playURL.host,
+        },
+      );
 
       if (_wantsPlayback) {
-        unawaited(_av.play());
+        _startEnginePlayback(mine);
         if (mine != _token) return;
       } else {
         await _av.pause();
@@ -842,9 +953,22 @@ class PlayerStore extends ChangeNotifier {
       _persist();
       notifyListeners();
     } catch (error) {
-      await session.api.delete('/api/playback/intents/$intentID').catchError((_) {});
+      LocalLogStore.shared.error(
+        AppLogCategory.player,
+        'playback.failed',
+        fields: {
+          'track': row.key,
+          'error': error.toString(),
+          'recover': '$recover',
+        },
+      );
+      await session.api
+          .delete('/api/playback/intents/$intentID')
+          .catchError((_) {});
       if (createdSessionID != null) {
-        await session.api.delete('/api/playback/sessions/$createdSessionID').catchError((_) {});
+        await session.api
+            .delete('/api/playback/sessions/$createdSessionID')
+            .catchError((_) {});
       }
       if (mine == _token && !recover && autoplay) {
         await _playAt(idx, position: position, autoplay: true, recover: true);
@@ -944,19 +1068,23 @@ class PlayerStore extends ChangeNotifier {
   // Source switching (apply a picked candidate to the current track)
   // ---------------------------------------------------------------------------
 
-  Future<SourceApplyReceipt> applySource(Track candidate, Track original, {int? version}) async {
+  Future<SourceApplyReceipt> applySource(Track candidate, Track original,
+      {int? version}) async {
     final session = _session;
     if (session == null) throw const ApiError('未登录', status: 401);
     final wasCurrent = track?.key == original.key;
     final outcome = await session.api.applySource(
         original: original, candidate: candidate, version: version);
     if (!outcome.canRebuildSession) {
-      return SourceApplyReceipt(outcome: outcome, switchResult: SourceSwitchResult.notRequested);
+      return SourceApplyReceipt(
+          outcome: outcome, switchResult: SourceSwitchResult.notRequested);
     }
     if (track?.key != original.key) {
       return SourceApplyReceipt(
           outcome: outcome,
-          switchResult: wasCurrent ? SourceSwitchResult.cancelled : SourceSwitchResult.notRequested);
+          switchResult: wasCurrent
+              ? SourceSwitchResult.cancelled
+              : SourceSwitchResult.notRequested);
     }
     // Rebuild the session for the current track at its current position. On
     // Android a fresh setAudioSource is cheap and avoids the dual-engine
@@ -965,14 +1093,18 @@ class PlayerStore extends ChangeNotifier {
     final position = current;
     await _playAt(idx, position: position, autoplay: true);
     if (track?.key != original.key) {
-      return SourceApplyReceipt(outcome: outcome, switchResult: SourceSwitchResult.cancelled);
+      return SourceApplyReceipt(
+          outcome: outcome, switchResult: SourceSwitchResult.cancelled);
     }
     if (loading) {
-      return SourceApplyReceipt(outcome: outcome, switchResult: SourceSwitchResult.pending);
+      return SourceApplyReceipt(
+          outcome: outcome, switchResult: SourceSwitchResult.pending);
     }
     return SourceApplyReceipt(
         outcome: outcome,
-        switchResult: (playing || _wantsPlayback) ? SourceSwitchResult.switched : SourceSwitchResult.failed);
+        switchResult: (playing || _wantsPlayback)
+            ? SourceSwitchResult.switched
+            : SourceSwitchResult.failed);
   }
 
   // ---------------------------------------------------------------------------
@@ -984,7 +1116,9 @@ class PlayerStore extends ChangeNotifier {
     final row = item ?? track;
     if (session == null || row == null) return;
     try {
-      final data = await session.api.postJson('/api/my/favorites/toggle', FavToggle.fromJson, json: row.payload());
+      final data = await session.api.postJson(
+          '/api/my/favorites/toggle', FavToggle.fromJson,
+          json: row.payload());
       final on = data.favorited ?? data.has ?? false;
       if (row.key == track?.key) {
         favorited = on;
@@ -1002,7 +1136,8 @@ class PlayerStore extends ChangeNotifier {
     final session = _session;
     if (session == null) return;
     try {
-      await session.api.post('/api/my/playlists/$id/tracks', json: row.payload());
+      await session.api
+          .post('/api/my/playlists/$id/tracks', json: row.payload());
       _ui?.notify('已加入歌单');
     } catch (e) {
       _ui?.notify(_describeError(e));
@@ -1015,8 +1150,8 @@ class PlayerStore extends ChangeNotifier {
     final encP = Uri.encodeQueryComponent(row.platform);
     final encI = Uri.encodeQueryComponent(row.id);
     try {
-      final data = await session.api
-          .getJson('/api/my/favorites/has?platform=$encP&id=$encI', FavToggle.fromJson);
+      final data = await session.api.getJson(
+          '/api/my/favorites/has?platform=$encP&id=$encI', FavToggle.fromJson);
       if (track?.key != row.key) return;
       favorited = data.has ?? data.favorited ?? false;
       _favoriteCtrl.add(favorited);
@@ -1026,32 +1161,46 @@ class PlayerStore extends ChangeNotifier {
   }
 
   Future<void> _recordHistory(Track row) async {
-    await _session?.api.post('/api/me/history', json: row.payload()).catchError((_) {});
+    await _session?.api
+        .post('/api/me/history', json: row.payload())
+        .catchError((_) {});
   }
 
   Future<void> _recordSource(PlaySource? source) async {
     if (source == null || source.id.isEmpty || source.platform.isEmpty) return;
-    await _session?.api.post('/api/me/history', json: source.payload()).catchError((_) {});
+    await _session?.api
+        .post('/api/me/history', json: source.payload())
+        .catchError((_) {});
   }
 
   void _maybeReportListen({bool completed = false}) {
     if (trial || _token == _listenReportedForToken) return;
     final row = track;
     if (row == null) return;
-    final durationMs = duration > 0 ? (duration * 1000).round() : (row.durationMs ?? 0).round();
+    final durationMs = duration > 0
+        ? (duration * 1000).round()
+        : (row.durationMs ?? 0).round();
     final positionMs = (current * 1000).round();
-    final half = durationMs > 0 ? (durationMs / 2).clamp(0, 240000).toDouble() : 240000.0;
+    final half = durationMs > 0
+        ? (durationMs / 2).clamp(0, 240000).toDouble()
+        : 240000.0;
     if (!completed && positionMs < half) return;
     _listenReportedForToken = _token;
-    _recordListen(row, positionMs: positionMs, durationMs: durationMs, completed: completed);
+    _recordListen(row,
+        positionMs: positionMs, durationMs: durationMs, completed: completed);
   }
 
-  Future<void> _recordListen(Track row, {required int positionMs, required int durationMs, required bool completed}) async {
+  Future<void> _recordListen(Track row,
+      {required int positionMs,
+      required int durationMs,
+      required bool completed}) async {
     final payload = row.payload();
     payload['positionMs'] = positionMs;
     payload['durationMs'] = durationMs;
     payload['completed'] = completed;
-    await _session?.api.post('/api/me/listens', json: payload).catchError((_) {});
+    await _session?.api
+        .post('/api/me/listens', json: payload)
+        .catchError((_) {});
   }
 
   // ---------------------------------------------------------------------------
@@ -1066,7 +1215,8 @@ class PlayerStore extends ChangeNotifier {
     final qs = <String, String>{'title': row.title, 'artists': row.artistText};
     if (row.album != null) qs['album'] = row.album!;
     final query = qs.entries
-        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .map((e) =>
+            '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
         .join('&');
     final encP = Uri.encodeComponent(row.platform);
     final encI = Uri.encodeComponent(row.id);
@@ -1096,22 +1246,40 @@ class PlayerStore extends ChangeNotifier {
   // Preheat (server-side source preparation for upcoming tracks)
   // ---------------------------------------------------------------------------
 
-  ({APIClient api, String intentID, String sessionID, List<Track> tracks})? _preheatContext() {
+  ({APIClient api, String intentID, String sessionID, List<Track> tracks})?
+      _preheatContext() {
     final session = _session;
-    if (_av.processingState != ProcessingState.ready || !_av.playing || _wantsPlayback == false || loading) {
+    if (_av.processingState != ProcessingState.ready ||
+        !_av.playing ||
+        _wantsPlayback == false ||
+        loading) {
       return null;
     }
     final intentID = _playbackIntentID;
     final sessionID = _playbackSessionID;
     if (session == null || intentID == null || sessionID == null) return null;
-    final order = shuffle ? _shuffleSeq : List<int>.generate(queue.length, (i) => i);
-    final upcoming = PlaybackPreheatPolicy.upcoming(order: order, current: index, repeatMode: repeatMode);
-    final tracks = upcoming.where((i) => i >= 0 && i < queue.length).map((i) => queue[i]).toList();
+    final order =
+        shuffle ? _shuffleSeq : List<int>.generate(queue.length, (i) => i);
+    final upcoming = PlaybackPreheatPolicy.upcoming(
+        order: order, current: index, repeatMode: repeatMode);
+    final tracks = upcoming
+        .where((i) => i >= 0 && i < queue.length)
+        .map((i) => queue[i])
+        .toList();
     if (tracks.isEmpty) return null;
-    return (api: session.api, intentID: intentID, sessionID: sessionID, tracks: tracks);
+    return (
+      api: session.api,
+      intentID: intentID,
+      sessionID: sessionID,
+      tracks: tracks
+    );
   }
 
-  bool _isCurrentPreheat({required int revision, required String intentID, required String key, required bool warm}) {
+  bool _isCurrentPreheat(
+      {required int revision,
+      required String intentID,
+      required String key,
+      required bool warm}) {
     return revision == _preheatRevision &&
         _playbackIntentID == intentID &&
         _wantsPlayback &&
@@ -1121,13 +1289,21 @@ class PlayerStore extends ChangeNotifier {
   }
 
   Future<PlaybackTelemetryReceipt?> _sendPlaybackTelemetry(
-      {required APIClient api, required String intentID, required String sessionID, required String state}) {
+      {required APIClient api,
+      required String intentID,
+      required String sessionID,
+      required String state}) {
     final previous = _telemetryTail;
     final task = () async {
       await previous;
       try {
-        return await api.postJson('/api/playback/telemetry', PlaybackTelemetryReceipt.fromJson,
-            json: {'playIntentId': intentID, 'sessionId': sessionID, 'state': state});
+        return await api.postJson(
+            '/api/playback/telemetry', PlaybackTelemetryReceipt.fromJson,
+            json: {
+              'playIntentId': intentID,
+              'sessionId': sessionID,
+              'state': state
+            });
       } catch (_) {
         return null;
       }
@@ -1137,9 +1313,13 @@ class PlayerStore extends ChangeNotifier {
   }
 
   Future<bool> _acknowledgePreheatPlaying(
-      {required APIClient api, required String intentID, required String sessionID, required int revision}) async {
+      {required APIClient api,
+      required String intentID,
+      required String sessionID,
+      required int revision}) async {
     if (_preheatPlayingAcknowledgedIntentID == intentID) return true;
-    final receipt = await _sendPlaybackTelemetry(api: api, intentID: intentID, sessionID: sessionID, state: 'playing');
+    final receipt = await _sendPlaybackTelemetry(
+        api: api, intentID: intentID, sessionID: sessionID, state: 'playing');
     if (receipt?.accepted != true ||
         revision != _preheatRevision ||
         _playbackIntentID != intentID ||
@@ -1154,7 +1334,8 @@ class PlayerStore extends ChangeNotifier {
   void _ensurePreheatCandidates() {
     final context = _preheatContext();
     if (context == null) return;
-    final key = '${context.intentID}:${context.tracks.map((t) => t.key).join('|')}';
+    final key =
+        '${context.intentID}:${context.tracks.map((t) => t.key).join('|')}';
     if (key == _candidatePreheatKey) return;
     _preheatRevision += 1;
     final revision = _preheatRevision;
@@ -1162,19 +1343,34 @@ class PlayerStore extends ChangeNotifier {
     _warmPreheatKey = null;
     () async {
       for (var attempt = 0; attempt < 3; attempt++) {
-        if (!_isCurrentPreheat(revision: revision, intentID: context.intentID, key: key, warm: false)) return;
+        if (!_isCurrentPreheat(
+            revision: revision,
+            intentID: context.intentID,
+            key: key,
+            warm: false)) return;
         if (!await _acknowledgePreheatPlaying(
-            api: context.api, intentID: context.intentID, sessionID: context.sessionID, revision: revision)) {
+            api: context.api,
+            intentID: context.intentID,
+            sessionID: context.sessionID,
+            revision: revision)) {
           return;
         }
         try {
-          final receipt = await context.api.postJson('/api/playback/preheat', PlaybackPreheatReceipt.fromJson, json: {
-            'playIntentId': context.intentID,
-            'mode': 'candidates',
-            'tracks': context.tracks.map((t) => t.identityPayload()).toList(),
-          });
-          if (!_isCurrentPreheat(revision: revision, intentID: context.intentID, key: key, warm: false)) return;
-          if (receipt.reason == 'inactive_intent' || receipt.reason == 'inactive_session') {
+          final receipt = await context.api.postJson(
+              '/api/playback/preheat', PlaybackPreheatReceipt.fromJson,
+              json: {
+                'playIntentId': context.intentID,
+                'mode': 'candidates',
+                'tracks':
+                    context.tracks.map((t) => t.identityPayload()).toList(),
+              });
+          if (!_isCurrentPreheat(
+              revision: revision,
+              intentID: context.intentID,
+              key: key,
+              warm: false)) return;
+          if (receipt.reason == 'inactive_intent' ||
+              receipt.reason == 'inactive_session') {
             _stopPreheat();
           }
           return;
@@ -1193,7 +1389,8 @@ class PlayerStore extends ChangeNotifier {
     final limit = nearingEnd
         ? PlaybackPreheatPolicy.candidateLimit
         : PlaybackPreheatPolicy.baselineWarmWindow;
-    final warmTracks = PlaybackPreheatPolicy.warmWindow(context.tracks, limit: limit);
+    final warmTracks =
+        PlaybackPreheatPolicy.warmWindow(context.tracks, limit: limit);
     if (warmTracks.isEmpty) return;
     final key = '${context.intentID}:${warmTracks.map((t) => t.key).join('|')}';
     if (key == _warmPreheatKey) return;
@@ -1201,19 +1398,33 @@ class PlayerStore extends ChangeNotifier {
     _warmPreheatKey = key;
     () async {
       for (var attempt = 0; attempt < 3; attempt++) {
-        if (!_isCurrentPreheat(revision: revision, intentID: context.intentID, key: key, warm: true)) return;
+        if (!_isCurrentPreheat(
+            revision: revision,
+            intentID: context.intentID,
+            key: key,
+            warm: true)) return;
         if (!await _acknowledgePreheatPlaying(
-            api: context.api, intentID: context.intentID, sessionID: context.sessionID, revision: revision)) {
+            api: context.api,
+            intentID: context.intentID,
+            sessionID: context.sessionID,
+            revision: revision)) {
           return;
         }
         try {
-          final receipt = await context.api.postJson('/api/playback/preheat', PlaybackPreheatReceipt.fromJson, json: {
-            'playIntentId': context.intentID,
-            'mode': 'warm_window',
-            'tracks': warmTracks.map((t) => t.identityPayload()).toList(),
-          });
-          if (!_isCurrentPreheat(revision: revision, intentID: context.intentID, key: key, warm: true)) return;
-          if (receipt.reason == 'inactive_intent' || receipt.reason == 'inactive_session') {
+          final receipt = await context.api.postJson(
+              '/api/playback/preheat', PlaybackPreheatReceipt.fromJson,
+              json: {
+                'playIntentId': context.intentID,
+                'mode': 'warm_window',
+                'tracks': warmTracks.map((t) => t.identityPayload()).toList(),
+              });
+          if (!_isCurrentPreheat(
+              revision: revision,
+              intentID: context.intentID,
+              key: key,
+              warm: true)) return;
+          if (receipt.reason == 'inactive_intent' ||
+              receipt.reason == 'inactive_session') {
             _stopPreheat();
           }
           return;
@@ -1240,7 +1451,11 @@ class PlayerStore extends ChangeNotifier {
     final intentID = _playbackIntentID;
     final sessionID = _playbackSessionID;
     if (session == null || intentID == null || sessionID == null) return;
-    _sendPlaybackTelemetry(api: session.api, intentID: intentID, sessionID: sessionID, state: 'paused');
+    _sendPlaybackTelemetry(
+        api: session.api,
+        intentID: intentID,
+        sessionID: sessionID,
+        state: 'paused');
   }
 
   // ---------------------------------------------------------------------------
@@ -1262,7 +1477,9 @@ class PlayerStore extends ChangeNotifier {
         title: row.title,
         artist: row.artistText,
         album: row.album,
-        duration: duration > 0 ? Duration(milliseconds: (duration * 1000).round()) : null,
+        duration: duration > 0
+            ? Duration(milliseconds: (duration * 1000).round())
+            : null,
         artUri: artUri,
       ));
     }
@@ -1291,11 +1508,14 @@ class PlayerStore extends ChangeNotifier {
     String? cover;
     final raw = row.cover;
     if (raw != null && raw.isNotEmpty) {
-      if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+      if (raw.startsWith('http://') ||
+          raw.startsWith('https://') ||
+          raw.startsWith('data:')) {
         cover = raw;
       } else {
         final base = session?.baseURL ?? '';
-        if (base.isNotEmpty) cover = base + (raw.startsWith('/') ? raw : '/$raw');
+        if (base.isNotEmpty)
+          cover = base + (raw.startsWith('/') ? raw : '/$raw');
       }
     }
     final snap = PlaybackSnapshot(
@@ -1313,8 +1533,10 @@ class PlayerStore extends ChangeNotifier {
     final playingChanged = _lastWidgetPlaying != snap.playing;
     _lastWidgetTrackKey = row.key;
     _lastWidgetPlaying = snap.playing;
-    final stale = DateTime.now().difference(_lastWidgetReloadAt).inSeconds >= 45;
-    final shouldReload = reload || trackChanged || playingChanged || (snap.playing && stale);
+    final stale =
+        DateTime.now().difference(_lastWidgetReloadAt).inSeconds >= 45;
+    final shouldReload =
+        reload || trackChanged || playingChanged || (snap.playing && stale);
     if (shouldReload) _lastWidgetReloadAt = DateTime.now();
     WidgetBridge.savePlayback(snap, reload: shouldReload);
   }
@@ -1324,7 +1546,8 @@ class PlayerStore extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   void _persist() {
-    _session?.local.setPlayer(queue: queue, index: index, shuffle: shuffle, repeatMode: repeatMode);
+    _session?.local.setPlayer(
+        queue: queue, index: index, shuffle: shuffle, repeatMode: repeatMode);
   }
 
   void _rebuildShuffle({int? anchor}) {

@@ -419,16 +419,16 @@ class _LoginViewState extends State<LoginView> {
       child: FilledButton(
         onPressed: _loading ? null : _submit,
         style: FilledButton.styleFrom(
-            backgroundColor: MX.ember, foregroundColor: Colors.white),
+            backgroundColor: MX.ember, foregroundColor: MX.onAccent),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (_loading)
-              const SizedBox(
+              SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2, color: MX.onAccent))
             else
               const Icon(Icons.arrow_forward, size: 18),
             const SizedBox(width: 8),

@@ -1,6 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'dart:convert';
 
-/// Client-side log levels, mirroring Swift `AppLogLevel`.
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 enum AppLogLevel {
   debug,
   info,
@@ -8,8 +11,8 @@ enum AppLogLevel {
   error;
 
   static AppLogLevel? fromRaw(String raw) {
-    for (final l in AppLogLevel.values) {
-      if (l.name == raw) return l;
+    for (final level in AppLogLevel.values) {
+      if (level.name == raw) return level;
     }
     return null;
   }
@@ -17,7 +20,6 @@ enum AppLogLevel {
   int get rank => index;
 }
 
-/// Client-side log categories, mirroring Swift `AppLogCategory`.
 enum AppLogCategory {
   app,
   network,
@@ -44,8 +46,8 @@ enum AppLogCategory {
   }
 
   static AppLogCategory? fromRaw(String raw) {
-    for (final c in AppLogCategory.values) {
-      if (c.name == raw) return c;
+    for (final category in AppLogCategory.values) {
+      if (category.name == raw) return category;
     }
     return null;
   }
@@ -69,25 +71,87 @@ class AppLogRecord {
     this.fields = const {},
   });
 
-  String get fieldsLine => (fields.entries.toList()
-        ..sort((a, b) => a.key.compareTo(b.key)))
-      .map((e) => '${e.key}=${e.value}')
-      .join(' ');
+  String get fieldsLine =>
+      (fields.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+          .map((e) => '${e.key}=${e.value}')
+          .join(' ');
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'ts': ts.toIso8601String(),
+        'level': level.name,
+        'category': category.name,
+        'message': message,
+        'fields': fields,
+      };
+
+  static AppLogRecord? fromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final map = raw.cast<String, dynamic>();
+    final timestamp = DateTime.tryParse(map['ts']?.toString() ?? '');
+    final level = AppLogLevel.fromRaw(map['level']?.toString() ?? '');
+    final category = AppLogCategory.fromRaw(map['category']?.toString() ?? '');
+    if (timestamp == null || level == null || category == null) return null;
+    final rawFields = map['fields'];
+    final fields = <String, String>{};
+    if (rawFields is Map) {
+      for (final entry in rawFields.entries) {
+        fields[entry.key.toString()] = entry.value.toString();
+      }
+    }
+    return AppLogRecord(
+      id: map['id']?.toString() ?? timestamp.microsecondsSinceEpoch.toString(),
+      ts: timestamp,
+      level: level,
+      category: category,
+      message: map['message']?.toString() ?? '',
+      fields: fields,
+    );
+  }
 }
 
-/// In-memory ring buffer of client log records. Mirrors Swift `LocalLogStore`.
-/// Persistence is intentionally omitted — the Swift store is also volatile
-/// beyond the current process for the mobile client.
+/// Persistent ring buffer for client diagnostics.
 class LocalLogStore extends ChangeNotifier {
   LocalLogStore._();
   static final LocalLogStore shared = LocalLogStore._();
 
   static const _capacity = 1000;
+  static const _storageKey = 'clientLogs.v1';
   final List<AppLogRecord> _records = [];
+  SharedPreferences? _preferences;
+  Timer? _persistTimer;
   int _seq = 0;
 
-  void log(AppLogLevel level, AppLogCategory category, String message,
-      {Map<String, String> fields = const {}}) {
+  Future<void> init() async {
+    if (_preferences != null) return;
+    final preferences = await SharedPreferences.getInstance();
+    _preferences = preferences;
+    final stored = preferences.getString(_storageKey);
+    if (stored != null && stored.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(stored);
+        if (decoded is List) {
+          for (final raw in decoded) {
+            final record = AppLogRecord.fromJson(raw);
+            if (record != null) _records.add(record);
+          }
+        }
+      } catch (_) {
+        _records.clear();
+      }
+    }
+    if (_records.length > _capacity) {
+      _records.removeRange(0, _records.length - _capacity);
+    }
+    notifyListeners();
+  }
+
+  void log(
+    AppLogLevel level,
+    AppLogCategory category,
+    String message, {
+    Map<String, String> fields = const {},
+  }) {
     _records.add(AppLogRecord(
       id: '${DateTime.now().microsecondsSinceEpoch}-${_seq++}',
       ts: DateTime.now(),
@@ -99,47 +163,73 @@ class LocalLogStore extends ChangeNotifier {
     if (_records.length > _capacity) {
       _records.removeRange(0, _records.length - _capacity);
     }
+    _schedulePersist();
     notifyListeners();
   }
 
-  void debug(AppLogCategory c, String m, {Map<String, String> f = const {}}) => log(AppLogLevel.debug, c, m, fields: f);
-  void info(AppLogCategory c, String m, {Map<String, String> f = const {}}) => log(AppLogLevel.info, c, m, fields: f);
-  void warn(AppLogCategory c, String m, {Map<String, String> f = const {}}) => log(AppLogLevel.warn, c, m, fields: f);
-  void error(AppLogCategory c, String m, {Map<String, String> f = const {}}) => log(AppLogLevel.error, c, m, fields: f);
+  void debug(AppLogCategory category, String message,
+          {Map<String, String> fields = const {}}) =>
+      log(AppLogLevel.debug, category, message, fields: fields);
+
+  void info(AppLogCategory category, String message,
+          {Map<String, String> fields = const {}}) =>
+      log(AppLogLevel.info, category, message, fields: fields);
+
+  void warn(AppLogCategory category, String message,
+          {Map<String, String> fields = const {}}) =>
+      log(AppLogLevel.warn, category, message, fields: fields);
+
+  void error(AppLogCategory category, String message,
+          {Map<String, String> fields = const {}}) =>
+      log(AppLogLevel.error, category, message, fields: fields);
 
   List<AppLogRecord> recent({
     AppLogLevel? level,
     AppLogCategory? category,
     String search = '',
-    int limit = 400,
+    int limit = _capacity,
   }) {
-    final q = search.trim().toLowerCase();
-    final filtered = _records.where((r) {
-      if (level != null && r.level != level) return false;
-      if (category != null && r.category != category) return false;
-      if (q.isNotEmpty) {
-        final hay = '${r.message} ${r.fieldsLine}'.toLowerCase();
-        if (!hay.contains(q)) return false;
+    final query = search.trim().toLowerCase();
+    final filtered = _records.where((record) {
+      if (level != null && record.level != level) return false;
+      if (category != null && record.category != category) return false;
+      if (query.isNotEmpty) {
+        final haystack = '${record.message} ${record.fieldsLine}'.toLowerCase();
+        if (!haystack.contains(query)) return false;
       }
       return true;
     }).toList();
-    // Newest first.
     filtered.sort((a, b) => b.ts.compareTo(a.ts));
     return filtered.take(limit).toList();
   }
 
   String exportText() {
-    final buf = StringBuffer();
-    for (final r in _records) {
-      buf.writeln('${r.ts.toIso8601String()} [${r.level.name.toUpperCase()}] '
-          '${r.category.name} ${r.message}'
-          '${r.fields.isEmpty ? '' : ' | ${r.fieldsLine}'}');
+    final buffer = StringBuffer();
+    for (final record in _records) {
+      buffer.writeln(
+        '${record.ts.toIso8601String()} [${record.level.name.toUpperCase()}] '
+        '${record.category.name} ${record.message}'
+        '${record.fields.isEmpty ? '' : ' | ${record.fieldsLine}'}',
+      );
     }
-    return buf.toString();
+    return buffer.toString();
   }
 
   void clear() {
     _records.clear();
+    _persistTimer?.cancel();
+    unawaited(_preferences?.remove(_storageKey));
     notifyListeners();
+  }
+
+  void _schedulePersist() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(milliseconds: 300), () {
+      final preferences = _preferences;
+      if (preferences == null) return;
+      final encoded =
+          jsonEncode(_records.map((record) => record.toJson()).toList());
+      unawaited(preferences.setString(_storageKey, encoded));
+    });
   }
 }

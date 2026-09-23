@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'local/app_log.dart';
 import 'local/local_store.dart';
 import 'stores/audio_handler.dart';
 import 'stores/player_store.dart';
@@ -15,6 +18,28 @@ Future<void> main() async {
 
   // Persistence must be ready before any store reads it.
   final local = await LocalStore.open();
+  final logs = LocalLogStore.shared;
+  await logs.init();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    logs.error(
+      AppLogCategory.app,
+      'flutter.error',
+      fields: {
+        'error': details.exceptionAsString(),
+        if (details.library != null) 'library': details.library!,
+      },
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    logs.error(
+      AppLogCategory.app,
+      'platform.error',
+      fields: {'error': error.toString()},
+    );
+    return false;
+  };
+  logs.info(AppLogCategory.app, 'app.started');
 
   // Configure the platform audio session for music playback (focus handling,
   // ducking, interruption). Mirrors the Swift `AVAudioSession` setup.
@@ -38,6 +63,11 @@ Future<void> main() async {
       ),
     );
   } catch (error, stackTrace) {
+    logs.error(
+      AppLogCategory.player,
+      'audio_service.init_failed',
+      fields: {'error': error.toString()},
+    );
     FlutterError.reportError(FlutterErrorDetails(
       exception: error,
       stack: stackTrace,

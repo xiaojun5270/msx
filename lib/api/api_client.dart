@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 
+import '../local/app_log.dart';
 import '../models/models.dart';
 import 'auth_box.dart';
 
@@ -88,41 +89,51 @@ class APIClient {
 
   // Typed helpers -------------------------------------------------------------
 
-  Future<T> getJson<T>(String path, T Function(Map<String, dynamic>) factory) async {
+  Future<T> getJson<T>(
+      String path, T Function(Map<String, dynamic>) factory) async {
     final data = unwrapEnvelope(await _rawJson('GET', path));
     return factory(_expectMap(data));
   }
 
   /// GET returning the raw unwrapped `data` (may be a list or scalar).
-  Future<dynamic> getData(String path) async => unwrapEnvelope(await _rawJson('GET', path));
+  Future<dynamic> getData(String path) async =>
+      unwrapEnvelope(await _rawJson('GET', path));
 
-  Future<T> postJson<T>(String path, T Function(Map<String, dynamic>) factory, {Object? json}) async {
+  Future<T> postJson<T>(String path, T Function(Map<String, dynamic>) factory,
+      {Object? json}) async {
     final data = unwrapEnvelope(await _rawJson('POST', path, json: json));
     return factory(_expectMap(data));
   }
 
-  Future<T> putJson<T>(String path, T Function(Map<String, dynamic>) factory, {Object? json}) async {
+  Future<T> putJson<T>(String path, T Function(Map<String, dynamic>) factory,
+      {Object? json}) async {
     final data = unwrapEnvelope(await _rawJson('PUT', path, json: json));
     return factory(_expectMap(data));
   }
 
-  Future<T> deleteJson<T>(String path, T Function(Map<String, dynamic>) factory, {Object? json}) async {
+  Future<T> deleteJson<T>(String path, T Function(Map<String, dynamic>) factory,
+      {Object? json}) async {
     final data = unwrapEnvelope(await _rawJson('DELETE', path, json: json));
     return factory(_expectMap(data));
   }
 
   /// Void POST/PUT/DELETE — throws if the envelope reports an error.
-  Future<void> post(String path, {Object? json}) => _sendVoid('POST', path, json: json);
-  Future<void> put(String path, {Object? json}) => _sendVoid('PUT', path, json: json);
+  Future<void> post(String path, {Object? json}) =>
+      _sendVoid('POST', path, json: json);
+  Future<void> put(String path, {Object? json}) =>
+      _sendVoid('PUT', path, json: json);
   Future<void> delete(String path) => _sendVoid('DELETE', path);
 
   /// GET returning the decoded `data` list mapped with a factory.
-  Future<List<T>> getList<T>(String path, T Function(Map<String, dynamic>) factory) async {
+  Future<List<T>> getList<T>(
+      String path, T Function(Map<String, dynamic>) factory) async {
     final data = unwrapEnvelope(await _rawJson('GET', path));
     return decodeList(data, factory);
   }
 
-  Future<List<T>> postList<T>(String path, T Function(Map<String, dynamic>) factory, {Object? json}) async {
+  Future<List<T>> postList<T>(
+      String path, T Function(Map<String, dynamic>) factory,
+      {Object? json}) async {
     final data = unwrapEnvelope(await _rawJson('POST', path, json: json));
     return decodeList(data, factory);
   }
@@ -134,7 +145,8 @@ class APIClient {
   }
 
   /// Decode a cached raw body into a typed value.
-  static T? decodeCached<T>(String body, T Function(Map<String, dynamic>) factory) {
+  static T? decodeCached<T>(
+      String body, T Function(Map<String, dynamic>) factory) {
     try {
       final data = unwrapEnvelope(jsonDecode(body));
       if (data is Map) return factory(data.cast<String, dynamic>());
@@ -197,17 +209,22 @@ class APIClient {
     if (resp.body.isEmpty) return;
     try {
       final root = jsonDecode(resp.body);
-      if (root is Map && root['result'] is Map && root['result']['status'] == 'error') {
+      if (root is Map &&
+          root['result'] is Map &&
+          root['result']['status'] == 'error') {
         final err = root['result']['error'];
-        throw ApiError((err is Map ? err['message'] : null) as String? ?? '请求失败');
+        throw ApiError(
+            (err is Map ? err['message'] : null) as String? ?? '请求失败');
       }
     } on FormatException {
       // Non-JSON empty success body — ignore.
     }
   }
 
-  Future<http.Response> _request(String method, String path, {Object? json}) async {
+  Future<http.Response> _request(String method, String path,
+      {Object? json}) async {
     final target = url(path);
+    final started = Stopwatch()..start();
     final headers = <String, String>{};
     final cookie = combinedCookieHeader();
     if (cookie != null) headers['Cookie'] = cookie;
@@ -218,22 +235,60 @@ class APIClient {
     }
     http.Response resp;
     try {
-      final req = http.Request(method, target)
-        ..headers.addAll(headers);
+      final req = http.Request(method, target)..headers.addAll(headers);
       if (body is String) req.body = body;
-      final streamed = await _http.send(req).timeout(const Duration(seconds: 30));
+      final streamed =
+          await _http.send(req).timeout(const Duration(seconds: 30));
       resp = await http.Response.fromStream(streamed);
     } catch (e) {
-      throw _networkError(e, target);
+      final error = _networkError(e, target);
+      LocalLogStore.shared.error(
+        AppLogCategory.network,
+        'request.failed',
+        fields: {
+          'method': method,
+          'path': target.path,
+          'error': error.message,
+          'elapsedMs': '${started.elapsedMilliseconds}',
+        },
+      );
+      throw error;
     }
     _ingest(resp.headers);
     final status = resp.statusCode;
     if (status == 401) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.auth,
+        'request.unauthorized',
+        fields: {'method': method, 'path': target.path},
+      );
       clearToken();
       throw const ApiError('未登录', status: 401);
     }
     if (status != 0 && (status < 200 || status >= 300)) {
-      throw _httpError(resp.body, status);
+      final error = _httpError(resp.body, status);
+      LocalLogStore.shared.warn(
+        AppLogCategory.network,
+        'request.http_error',
+        fields: {
+          'method': method,
+          'path': target.path,
+          'status': '$status',
+          'error': error.message,
+        },
+      );
+      throw error;
+    }
+    if (started.elapsedMilliseconds >= 2500) {
+      LocalLogStore.shared.info(
+        AppLogCategory.network,
+        'request.slow',
+        fields: {
+          'method': method,
+          'path': target.path,
+          'elapsedMs': '${started.elapsedMilliseconds}',
+        },
+      );
     }
     return resp;
   }
@@ -241,7 +296,9 @@ class APIClient {
   static ApiError _httpError(String body, int status) {
     try {
       final root = jsonDecode(body);
-      if (root is Map && root['result'] is Map && root['result']['status'] == 'error') {
+      if (root is Map &&
+          root['result'] is Map &&
+          root['result']['status'] == 'error') {
         final err = root['result']['error'];
         final msg = (err is Map ? err['message'] : null) as String?;
         return ApiError(msg ?? '请求失败 (HTTP $status)', status: status);
@@ -264,7 +321,8 @@ class APIClient {
     if (msg.contains('connection refused') || msg.contains('errno = 111')) {
       return ApiError('无法连接服务器：$host。请检查端口、防火墙和服务是否已启动。', status: 0);
     }
-    if (msg.contains('timeout') || error is Exception && msg.contains('timed out')) {
+    if (msg.contains('timeout') ||
+        error is Exception && msg.contains('timed out')) {
       return ApiError('连接服务器超时：$host。请检查网络或服务器状态。', status: 0);
     }
     if (msg.contains('network is unreachable') || msg.contains('no address')) {

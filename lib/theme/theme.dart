@@ -39,8 +39,8 @@ enum AppearanceMode {
     }
   }
 
-  static AppearanceMode fromRaw(String? raw) =>
-      AppearanceMode.values.firstWhere((m) => m.name == raw, orElse: () => AppearanceMode.system);
+  static AppearanceMode fromRaw(String? raw) => AppearanceMode.values
+      .firstWhere((m) => m.name == raw, orElse: () => AppearanceMode.system);
 }
 
 /// Accent theme — mirrors Swift `ThemeAccent`.
@@ -107,8 +107,8 @@ enum ThemeAccent {
 
   static ThemeAccent current = ThemeAccent.coral;
 
-  static ThemeAccent fromRaw(String? raw) =>
-      ThemeAccent.values.firstWhere((a) => a.name == raw, orElse: () => ThemeAccent.coral);
+  static ThemeAccent fromRaw(String? raw) => ThemeAccent.values
+      .firstWhere((a) => a.name == raw, orElse: () => ThemeAccent.coral);
 }
 
 /// Design tokens — mirrors Swift `enum MX`.
@@ -118,19 +118,22 @@ class MX {
   // Light follows iOS semantic system colors; dark is the Koel ink palette.
   static Color get ink =>
       _dyn(const Color(0xFFFFFFFF), const Color.fromRGBO(12, 10, 14, 1));
-  static Color get panel =>
-      _dyn(const Color.fromRGBO(255, 255, 255, 0.72), const Color.fromRGBO(30, 26, 33, 0.68));
+  static Color get panel => _dyn(const Color.fromRGBO(255, 255, 255, 0.72),
+      const Color.fromRGBO(30, 26, 33, 0.68));
   static Color get line =>
       _dyn(Colors.black.withOpacity(0.10), Colors.white.withOpacity(0.12));
   static Color get mute =>
-      _dyn(const Color.fromRGBO(60, 60, 67, 1), const Color.fromRGBO(139, 129, 120, 1));
+      _dyn(const Color(0xFF5E5962), const Color(0xFFC8BBB5));
 
   /// Semantic accent — reads the saved theme so legacy controls track the tint.
   static Color get ember => ThemeAccent.current.color;
   static Color get emberDeep => ThemeAccent.current.deepColor;
+  static Color get onAccent =>
+      ThemeData.estimateBrightnessForColor(ember) == Brightness.dark
+          ? Colors.white
+          : const Color(0xFF17151A);
 
-  static Color get fg =>
-      _dyn(const Color(0xFF000000), const Color.fromRGBO(255, 236, 228, 1)); // 280 clamps to 255
+  static Color get fg => _dyn(const Color(0xFF17151A), const Color(0xFFFFF7F3));
   static Color get fill =>
       _dyn(Colors.black.withOpacity(0.05), Colors.white.withOpacity(0.06));
   static Color get fillSoft =>
@@ -142,13 +145,20 @@ class MX {
   static Color get elev =>
       _dyn(Colors.black.withOpacity(0.1), Colors.white.withOpacity(0.1));
   static Color get dim =>
-      _dyn(Colors.black.withOpacity(0.45), Colors.white.withOpacity(0.45));
+      _dyn(Colors.black.withOpacity(0.62), Colors.white.withOpacity(0.68));
   static Color get dimSoft =>
-      _dyn(Colors.black.withOpacity(0.4), Colors.white.withOpacity(0.4));
+      _dyn(Colors.black.withOpacity(0.52), Colors.white.withOpacity(0.56));
   static const Color heroBase = Color.fromRGBO(12, 10, 14, 1);
 
   static const List<String> platforms = [
-    'navidrome', 'apple', 'netease', 'qqmusic', 'kugou', 'youtube', 'source', 'lx'
+    'navidrome',
+    'apple',
+    'netease',
+    'qqmusic',
+    'kugou',
+    'youtube',
+    'source',
+    'lx'
   ];
 
   static String label(String? id) {
@@ -239,7 +249,13 @@ class MX {
     }
   }
 
-  static const Set<String> _urlSchemes = {'http', 'https', 'ftp', 'file', 'musicx'};
+  static const Set<String> _urlSchemes = {
+    'http',
+    'https',
+    'ftp',
+    'file',
+    'musicx'
+  };
 
   static bool isKnownSearchPlatform(String raw) {
     final token = raw.trim();
@@ -253,7 +269,10 @@ class MX {
 
   static bool isSearchPlatformToken(String raw) {
     final token = raw.trim();
-    if (token.isEmpty || token.length > 32 || token.contains('.') || token.contains('/')) {
+    if (token.isEmpty ||
+        token.length > 32 ||
+        token.contains('.') ||
+        token.contains('/')) {
       return false;
     }
     if (isKnownSearchPlatform(token)) return true;
@@ -262,7 +281,8 @@ class MX {
     return RegExp(r'^[a-z][a-z0-9_-]{0,31}$').hasMatch(lower);
   }
 
-  static ({String query, String platform}) parseSearchQuery(String raw, {String fallbackPlatform = ''}) {
+  static ({String query, String platform}) parseSearchQuery(String raw,
+      {String fallbackPlatform = ''}) {
     final trimmed = raw.trim();
     final fallback = resolvePlatform(fallbackPlatform);
     if (trimmed.isEmpty) return (query: '', platform: fallback);

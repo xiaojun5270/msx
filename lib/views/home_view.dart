@@ -231,8 +231,8 @@ class _HomeViewState extends State<HomeView> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(color: MX.ember, borderRadius: BorderRadius.circular(999)),
-                          child: const Text('为你',
-                              style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                          child: Text('为你',
+                              style: TextStyle(color: MX.onAccent, fontSize: 10, fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ),
