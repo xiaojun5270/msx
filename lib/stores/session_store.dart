@@ -10,6 +10,8 @@ class SessionStore extends ChangeNotifier {
   final LocalStore local;
   late final APIClient api;
 
+  Future<void> Function()? onSigningOut;
+
   String _baseURL;
   String _proxyCookie;
   bool ready = false;
@@ -66,7 +68,8 @@ class SessionStore extends ChangeNotifier {
     ready = true;
   }
 
-  void apply(Me me) {
+  Future<void> apply(Me me) async {
+    if (me.authed != true) await _notifySigningOut();
     authed = me.authed ?? false;
     accountId = authed ? me.accountId : null;
     setupRequired = me.setupRequired ?? false;
@@ -87,10 +90,10 @@ class SessionStore extends ChangeNotifier {
   Future<void> bootstrap() async {
     try {
       final me = await api.getJson('/api/me', Me.fromJson);
-      apply(me);
+      await apply(me);
     } catch (e) {
       if ((e is ApiError && e.status == 401) || !authed) {
-        _clearAuthenticationPreservingConnection();
+        await _clearAuthenticationPreservingConnection();
       }
     }
     ready = true;
@@ -101,7 +104,7 @@ class SessionStore extends ChangeNotifier {
     api.updateBaseURL(_baseURL);
     final path = setupRequired ? '/api/auth/setup' : '/api/auth/login';
     final me = await api.postJson(path, Me.fromJson, json: {'password': password});
-    apply(me);
+    await apply(me);
   }
 
   Future<void> refreshBindings() async {
@@ -118,6 +121,7 @@ class SessionStore extends ChangeNotifier {
 
   /// Local-only logout — mirrors Swift `logout()`.
   Future<void> logout() async {
+    await _notifySigningOut();
     api.clearToken();
     local.setSession(token: '', me: null);
     authed = false;
@@ -151,7 +155,16 @@ class SessionStore extends ChangeNotifier {
     local.setSession(token: token, me: null);
   }
 
-  void _clearAuthenticationPreservingConnection() {
+  Future<void> _notifySigningOut() async {
+    try {
+      await onSigningOut?.call();
+    } catch (_) {
+      // Authentication must still be cleared if playback cleanup fails.
+    }
+  }
+
+  Future<void> _clearAuthenticationPreservingConnection() async {
+    await _notifySigningOut();
     api.clearToken();
     local.setSession(token: '', me: null);
     authed = false;

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
@@ -24,7 +25,23 @@ class NowPlayingView extends StatefulWidget {
 }
 
 class _NowPlayingViewState extends State<NowPlayingView> {
+  static const _audioRouteChannel = MethodChannel('com.musix.app/audio_route');
   _NPPage _page = _NPPage.artwork;
+
+  Future<void> _showAudioOutput() async {
+    try {
+      final opened =
+          await _audioRouteChannel.invokeMethod<bool>('showOutputSwitcher') ??
+              false;
+      if (!opened && mounted) {
+        context.read<UIStore>().notify('当前设备无法打开播放输出选择器');
+      }
+    } on PlatformException catch (error) {
+      if (mounted) {
+        context.read<UIStore>().notify(error.message ?? '无法打开播放输出选择器');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +208,12 @@ class _NowPlayingViewState extends State<NowPlayingView> {
             () => setState(() => _page =
                 _page == _NPPage.lyrics ? _NPPage.artwork : _NPPage.lyrics)),
         const Spacer(),
-        Icon(Icons.airplay, color: Colors.white.withOpacity(0.86), size: 22),
+        IconButton(
+          tooltip: '播放输出',
+          onPressed: _showAudioOutput,
+          icon: Icon(Icons.airplay,
+              color: Colors.white.withOpacity(0.86), size: 22),
+        ),
         const Spacer(),
         mode(
             Icons.queue_music,
@@ -642,40 +664,57 @@ class _LyricsPageState extends State<_LyricsPage> {
         const SizedBox(height: 24),
         widget.header,
         Expanded(
-          child: lyrics.isEmpty
+          child: player.lyricsLoading
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.lyrics_outlined,
-                          color: Colors.white.withOpacity(0.5), size: 40),
-                      const SizedBox(height: 8),
-                      const Text('暂无歌词', style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.2, color: Colors.white.withOpacity(0.82)),
                 )
-              : ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.symmetric(vertical: 48),
-                  itemCount: lyrics.length,
-                  itemBuilder: (_, i) {
-                    final active = i == player.lyricIndex;
-                    final text = (lyrics[i].text?.isNotEmpty ?? false)
-                        ? lyrics[i].text!
-                        : '♪';
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      child: Text(text,
-                          style: TextStyle(
-                              color: active
-                                  ? Colors.white
-                                  : Colors.white.withOpacity(0.48),
-                              fontSize: active ? 19 : 16,
-                              fontWeight:
-                                  active ? FontWeight.bold : FontWeight.w500)),
-                    );
-                  },
-                ),
+              : lyrics.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lyrics_outlined,
+                              color: Colors.white.withOpacity(0.5), size: 40),
+                          const SizedBox(height: 8),
+                          Text(player.lyricsMessage ?? '暂无歌词',
+                              style: const TextStyle(color: Colors.white)),
+                          const SizedBox(height: 10),
+                          TextButton.icon(
+                            onPressed: player.reloadLyrics,
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('重试'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.white.withOpacity(0.12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      itemCount: lyrics.length,
+                      itemBuilder: (_, i) {
+                        final active = i == player.lyricIndex;
+                        final text = (lyrics[i].text?.isNotEmpty ?? false)
+                            ? lyrics[i].text!
+                            : '♪';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                          child: Text(text,
+                              style: TextStyle(
+                                  color: active
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.48),
+                                  fontSize: active ? 19 : 16,
+                                  fontWeight: active
+                                      ? FontWeight.bold
+                                      : FontWeight.w500)),
+                        );
+                      },
+                    ),
         ),
       ],
     );

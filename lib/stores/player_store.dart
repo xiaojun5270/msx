@@ -44,6 +44,8 @@ class PlayerStore extends ChangeNotifier {
   String? sourcePlatform;
   List<LyricLine> lyrics = [];
   int lyricIndex = 0;
+  bool lyricsLoading = false;
+  String? lyricsMessage;
   double volume = 1;
 
   /// The user is dragging the scrubber. While true the position stream does not
@@ -166,6 +168,56 @@ class PlayerStore extends ChangeNotifier {
     _attachEngineListeners();
     _applyVolume();
     _syncPlaybackState();
+    notifyListeners();
+  }
+
+  Future<void> clearForSignOut() async {
+    _token += 1;
+    _lyricsToken += 1;
+    _controlRevision += 1;
+    _preheatRevision += 1;
+    _setWantsPlayback(false);
+    for (final timer in _retainedExpiry.values) {
+      timer.cancel();
+    }
+    _retainedExpiry.clear();
+    _retained.clear();
+    try {
+      await _av.stop();
+    } catch (error) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.player,
+        'sign_out.stop_failed',
+        fields: {'error': error.toString()},
+      );
+    }
+    queue = [];
+    index = -1;
+    playing = false;
+    loading = false;
+    nowPlayingOpen = false;
+    current = 0;
+    duration = 0;
+    favorited = false;
+    trial = false;
+    selectedSourceKey = null;
+    sourceKind = null;
+    sourcePlatform = null;
+    lyrics = [];
+    lyricIndex = 0;
+    lyricsLoading = false;
+    lyricsMessage = null;
+    _playbackIntentID = null;
+    _playbackSessionID = null;
+    _loadedTrackKey = null;
+    _loadedURL = null;
+    _loadedHeaders = const {};
+    _recordingCorrespondence = null;
+    _activeLocalFileID = null;
+    _recovering = false;
+    sourceProgress = PlaybackSourceProgress(phase: PlaybackSourcePhase.idle);
+    _session?.local.clearPlayer();
+    _publishNowPlaying();
     notifyListeners();
   }
 
@@ -1285,27 +1337,101 @@ class PlayerStore extends ChangeNotifier {
   // Lyrics
   // ---------------------------------------------------------------------------
 
+  Future<void> reloadLyrics() async {
+    final row = track;
+    if (row != null) await _loadLyrics(row);
+  }
+
   Future<void> _loadLyrics(Track row) async {
     _lyricsToken += 1;
     final mine = _lyricsToken;
     final session = _session;
     if (session == null) return;
+    lyricsLoading = true;
+    lyricsMessage = null;
+    notifyListeners();
     final qs = <String, String>{'title': row.title, 'artists': row.artistText};
     if (row.album != null) qs['album'] = row.album!;
     final query = qs.entries
         .map((e) =>
             '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
         .join('&');
-    final encP = Uri.encodeComponent(row.platform);
-    final encI = Uri.encodeComponent(row.id);
-    try {
-      final box = await session.api
-          .getJson('/api/tracks/$encP/$encI/lyrics?$query', LyricsBox.fromJson);
-      if (mine != _lyricsToken || track?.key != row.key) return;
-      lyrics = box.lines ?? [];
-      _syncLyric();
-      notifyListeners();
-    } catch (_) {}
+    final candidates = <({String platform, String id})>[];
+    void addCandidate(String platform, String id) {
+      final p = platform.trim();
+      final i = id.trim();
+      if (p.isEmpty || i.isEmpty) return;
+      if (candidates.any((item) => item.platform == p && item.id == i)) return;
+      candidates.add((platform: p, id: i));
+    }
+
+    addCandidate(row.platform, row.id);
+    final sourceKey = selectedSourceKey;
+    if (sourceKey != null) {
+      final separator = sourceKey.indexOf('::');
+      if (separator > 0 && separator < sourceKey.length - 2) {
+        addCandidate(
+          sourceKey.substring(0, separator),
+          sourceKey.substring(separator + 2),
+        );
+      }
+    }
+    for (final alternative in row.alternatives) {
+      if (candidates.length >= 4) break;
+      addCandidate(alternative.platform, alternative.id);
+    }
+
+    var requestFailed = false;
+    List<LyricLine> resolved = const [];
+    for (final candidate in candidates) {
+      try {
+        final encP = Uri.encodeComponent(candidate.platform);
+        final encI = Uri.encodeComponent(candidate.id);
+        final box = await session.api.getJson(
+          '/api/tracks/$encP/$encI/lyrics?$query',
+          LyricsBox.fromJson,
+        );
+        if (mine != _lyricsToken || track?.key != row.key) return;
+        final lines = (box.lines ?? const <LyricLine>[])
+            .where((line) => (line.text ?? '').trim().isNotEmpty)
+            .toList();
+        if (lines.isNotEmpty) {
+          resolved = lines;
+          LocalLogStore.shared.info(
+            AppLogCategory.player,
+            'lyrics.loaded',
+            fields: {
+              'track': row.key,
+              'source': '${candidate.platform}::${candidate.id}',
+              'lines': '${lines.length}',
+            },
+          );
+          break;
+        }
+      } catch (error) {
+        requestFailed = true;
+        LocalLogStore.shared.warn(
+          AppLogCategory.player,
+          'lyrics.load_failed',
+          fields: {
+            'track': row.key,
+            'source': '${candidate.platform}::${candidate.id}',
+            'error': error.toString(),
+          },
+        );
+      }
+    }
+    if (mine != _lyricsToken || track?.key != row.key) return;
+    lyrics = resolved;
+    lyricIndex = 0;
+    lyricsLoading = false;
+    lyricsMessage = resolved.isNotEmpty
+        ? null
+        : requestFailed
+            ? '歌词加载失败'
+            : '暂未匹配到歌词';
+    _syncLyric();
+    notifyListeners();
   }
 
   void _syncLyric() {

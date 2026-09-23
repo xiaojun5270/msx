@@ -54,7 +54,7 @@ class _AccountViewState extends State<AccountView> {
     await session.refreshBindings();
     try {
       final me = await session.api.getJson('/api/me', Me.fromJson);
-      session.apply(me);
+      await session.apply(me);
     } catch (_) {}
 
     final lib = await session.fetchPage('/api/me/libraries/playlists',

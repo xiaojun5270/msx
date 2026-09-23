@@ -198,6 +198,13 @@ class LocalStore {
     }
   }
 
+  void clearPlayer() {
+    prefs.queueJSON = null;
+    prefs.queueIndex = -1;
+    _sp.remove(_kQueue);
+    _sp.remove(_kQueueIndex);
+  }
+
   // Search history ------------------------------------------------------------
 
   void pushSearch(String raw) {

@@ -52,6 +52,7 @@ Future<void> main() async {
 
   // Bind the player to its dependencies, then hand it to the OS media session.
   player.bind(session: session, ui: ui);
+  session.onSigningOut = player.clearForSignOut;
   try {
     await AudioService.init(
       builder: () => MusixAudioHandler(player),
