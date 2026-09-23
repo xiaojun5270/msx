@@ -81,6 +81,7 @@ class GlassSurface extends StatelessWidget {
   final bool showBorder;
   final bool showHighlight;
   final bool showShadow;
+  final bool pureBlur;
 
   const GlassSurface({
     super.key,
@@ -93,6 +94,7 @@ class GlassSurface extends StatelessWidget {
     this.showBorder = true,
     this.showHighlight = true,
     this.showShadow = true,
+    this.pureBlur = false,
   });
 
   @override
@@ -130,11 +132,18 @@ class GlassSurface extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  base.withOpacity((base.opacity + 0.08).clamp(0.0, 1.0)),
-                  base,
-                  Color.alphaBlend(accent, base),
-                ],
+                colors: pureBlur
+                    ? const [
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.transparent,
+                      ]
+                    : [
+                        base.withOpacity(
+                            (base.opacity + 0.08).clamp(0.0, 1.0)),
+                        base,
+                        Color.alphaBlend(accent, base),
+                      ],
               ),
               border: showBorder ? Border.all(color: edge, width: 0.8) : null,
             ),
@@ -161,6 +170,67 @@ class GlassSurface extends StatelessWidget {
                   ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Generic panel using the same blur, veil, and highlight treatment as
+/// `liquid_glass_bottom_bar`, for non-tab surfaces such as the mini player.
+class LiquidGlassPanel extends StatelessWidget {
+  final Widget child;
+  final BorderRadius borderRadius;
+  final double blurSigma;
+
+  const LiquidGlassPanel({
+    super.key,
+    required this.child,
+    this.borderRadius = const BorderRadius.all(Radius.circular(22)),
+    this.blurSigma = 20,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(40),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ColoredBox(color: Colors.white.withAlpha(10)),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withAlpha(28),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              child,
+            ],
           ),
         ),
       ),

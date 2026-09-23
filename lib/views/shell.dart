@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_bottom_bar/liquid_glass_bottom_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
@@ -118,7 +119,7 @@ class _MobileShellState extends State<MobileShell> {
     final player = context.watch<PlayerStore>();
     final media = MediaQuery.of(context);
     final safeBottom = media.padding.bottom > 8 ? media.padding.bottom : 8.0;
-    final navExtent = 58.0 + safeBottom;
+    final navExtent = 64.0 + safeBottom;
     final playerExtent =
         player.track == null ? 0.0 : (ui.playerExpanded ? 169.0 : 88.0);
     final contentBottomInset = navExtent + playerExtent + 16;
@@ -252,8 +253,6 @@ class _MobileShellState extends State<MobileShell> {
   }
 }
 
-/// Custom glass tab bar — the "自定义高保真玻璃质感" requirement means we do not
-/// use Material's `NavigationBar` chrome.
 class _TabBar extends StatelessWidget {
   final AppTab current;
   final List<AppTab> order;
@@ -264,79 +263,27 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding:
-          EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 8),
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(32),
-        blur: 18,
-        tint: const Color.fromRGBO(255, 255, 255, 0.10),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        showBorder: false,
-        showHighlight: false,
-        showShadow: false,
-        child: SizedBox(
-          height: 54,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              for (final tab in order) _item(tab, dark),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _item(AppTab tab, bool dark) {
-    final active = tab == current;
-    final color = active ? MX.fg : MX.mute.withOpacity(0.76);
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onSelect(tab),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          decoration: BoxDecoration(
-            color: active
-                ? MX.fg.withOpacity(dark ? 0.10 : 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(27),
-            border: Border.all(
-              color: active ? MX.fg.withOpacity(0.12) : Colors.transparent,
-              width: 0.6,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_tabIcon(tab, active), size: 22, color: color),
-              const SizedBox(height: 2),
-              Text(
-                tab.title,
-                maxLines: 1,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-                ),
+      padding: EdgeInsets.only(bottom: bottomInset > 0 ? bottomInset : 8),
+      child: MediaQuery.removePadding(
+        context: context,
+        removeBottom: true,
+        child: LiquidGlassBottomBar(
+          items: [
+            for (final tab in order)
+              LiquidGlassBottomBarItem(
+                icon: _tabIcon(tab, false),
+                activeIcon: _tabIcon(tab, true),
+                label: tab.title,
               ),
-              const SizedBox(height: 2),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: active ? 18 : 0,
-                height: 1.5,
-                decoration: BoxDecoration(
-                  color: MX.ember,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ],
-          ),
+          ],
+          currentIndex: order.indexOf(current),
+          onTap: (index) => onSelect(order[index]),
+          height: 64,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+          activeColor: ThemeAccent.current.color,
+          barBlurSigma: 20,
+          activeBlurSigma: 28,
         ),
       ),
     );

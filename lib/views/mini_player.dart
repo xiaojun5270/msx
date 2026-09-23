@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +23,6 @@ class _MiniPlayerState extends State<MiniPlayer> {
     final player = context.watch<PlayerStore>();
     final ui = context.watch<UIStore>();
     final session = context.read<SessionStore>();
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final track = player.track;
     if (track == null) return const SizedBox.shrink();
 
@@ -49,76 +46,32 @@ class _MiniPlayerState extends State<MiniPlayer> {
             if (velocity < -180 && !expanded) ui.setPlayerExpanded(true);
             if (velocity > 180 && expanded) ui.setPlayerExpanded(false);
           },
-          child: GlassSurface(
+          child: LiquidGlassPanel(
             borderRadius: BorderRadius.circular(expanded ? 28 : 34),
-            blur: 42,
-            tint: const Color.fromRGBO(255, 255, 255, 0.10),
-            showBorder: false,
-            child: Stack(
-              children: [
-                if (coverUrl != null)
-                  Positioned.fill(
-                    child: RepaintBoundary(
-                      child: Opacity(
-                        opacity: dark ? 0.17 : 0.10,
-                        child: ImageFiltered(
-                          imageFilter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
-                          child: Transform.scale(
-                            scale: 1.4,
-                            child: CachedNetworkImage(
-                              imageUrl: coverUrl.toString(),
-                              httpHeaders: headers,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ),
+            blurSigma: 24,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: expanded
+                  ? _expandedPlayer(
+                      context,
+                      player,
+                      track.title,
+                      track.artistText,
+                      coverUrl,
+                      headers,
+                      current,
+                      duration,
+                    )
+                  : _collapsedPlayer(
+                      context,
+                      player,
+                      track.title,
+                      track.artistText,
+                      coverUrl,
+                      headers,
                     ),
-                  ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: dark
-                            ? [
-                                Colors.black.withOpacity(0.02),
-                                Colors.black.withOpacity(0.10),
-                              ]
-                            : [
-                                Colors.white.withOpacity(0.02),
-                                Colors.white.withOpacity(0.10),
-                              ],
-                      ),
-                    ),
-                  ),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  child: expanded
-                      ? _expandedPlayer(
-                          context,
-                          player,
-                          track.title,
-                          track.artistText,
-                          coverUrl,
-                          headers,
-                          current,
-                          duration,
-                        )
-                      : _collapsedPlayer(
-                          context,
-                          player,
-                          track.title,
-                          track.artistText,
-                          coverUrl,
-                          headers,
-                        ),
-                ),
-              ],
             ),
           ),
         ),

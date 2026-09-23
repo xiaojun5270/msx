@@ -31,12 +31,13 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GlassSurface(
         borderRadius: BorderRadius.circular(16),
-        blur: 26,
-        tint: const Color.fromRGBO(255, 255, 255, 0.12),
+        blur: 30,
+        tint: Colors.transparent,
         padding: padding,
         showBorder: true,
         showHighlight: false,
-        showShadow: true,
+        showShadow: false,
+        pureBlur: true,
         child: SizedBox(
           width: double.infinity,
           child: child,
