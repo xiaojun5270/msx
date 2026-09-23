@@ -81,7 +81,6 @@ class GlassSurface extends StatelessWidget {
   final bool showBorder;
   final bool showHighlight;
   final bool showShadow;
-  final Color? borderColor;
 
   const GlassSurface({
     super.key,
@@ -94,7 +93,6 @@ class GlassSurface extends StatelessWidget {
     this.showBorder = true,
     this.showHighlight = true,
     this.showShadow = true,
-    this.borderColor,
   });
 
   @override
@@ -138,9 +136,7 @@ class GlassSurface extends StatelessWidget {
                   Color.alphaBlend(accent, base),
                 ],
               ),
-              border: showBorder
-                  ? Border.all(color: borderColor ?? edge, width: 0.8)
-                  : null,
+              border: showBorder ? Border.all(color: edge, width: 0.8) : null,
             ),
             child: Stack(
               children: [
