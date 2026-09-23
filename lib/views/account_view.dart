@@ -453,12 +453,13 @@ class _AccountViewState extends State<AccountView> {
   }) =>
       GlassSurface(
         borderRadius: BorderRadius.circular(16),
-        blur: 26,
-        tint: const Color.fromRGBO(255, 255, 255, 0.12),
+        blur: 34,
+        tint: const Color.fromRGBO(255, 255, 255, 0.06),
         padding: padding,
         showBorder: true,
         showHighlight: false,
         showShadow: true,
+        borderColor: ThemeAccent.current.color.withOpacity(0.34),
         child: SizedBox(width: double.infinity, child: child),
       );
 }
