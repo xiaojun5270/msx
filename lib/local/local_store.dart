@@ -20,6 +20,7 @@ class AppPrefs {
   int queueIndex;
   String appearanceMode;
   String themeAccent;
+  String backgroundImageUrls;
 
   AppPrefs({
     this.baseURL = 'http://127.0.0.1:8080',
@@ -35,6 +36,7 @@ class AppPrefs {
     this.queueIndex = -1,
     this.appearanceMode = 'system',
     this.themeAccent = 'coral',
+    this.backgroundImageUrls = '',
   });
 }
 
@@ -59,6 +61,7 @@ class LocalStore {
   static const _kQueueIndex = 'queueIndex';
   static const _kAppearance = 'appearanceMode';
   static const _kAccent = 'themeAccent';
+  static const _kBackgroundImageUrls = 'backgroundImageUrls';
   static const _kSearchTerms = 'searchTerms'; // JSON list of {text, ts}
 
   static const _homePrefix = 'home:';
@@ -80,6 +83,7 @@ class LocalStore {
       queueIndex: _sp.getInt(_kQueueIndex) ?? -1,
       appearanceMode: _sp.getString(_kAppearance) ?? 'system',
       themeAccent: _sp.getString(_kAccent) ?? 'coral',
+      backgroundImageUrls: _sp.getString(_kBackgroundImageUrls) ?? '',
     );
     ThemeAccent.current = themeAccent;
   }
@@ -161,6 +165,11 @@ class LocalStore {
     prefs.themeAccent = accent.name;
     ThemeAccent.current = accent;
     _sp.setString(_kAccent, accent.name);
+  }
+
+  void setBackgroundImageUrls(String value) {
+    prefs.backgroundImageUrls = value;
+    _sp.setString(_kBackgroundImageUrls, value);
   }
 
   // Player queue --------------------------------------------------------------

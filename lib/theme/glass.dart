@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'theme.dart';
 
@@ -6,8 +7,9 @@ import 'theme.dart';
 /// The bands stay subtle so artwork and dense library content remain primary.
 class AppBackdrop extends StatelessWidget {
   final Widget child;
+  final String? imageUrl;
 
-  const AppBackdrop({super.key, required this.child});
+  const AppBackdrop({super.key, required this.child, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -22,17 +24,47 @@ class AppBackdrop extends StatelessWidget {
       dark ? const Color(0xFF0D1213) : const Color(0xFFF4F8F7),
     );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: base,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: const [0, 0.34, 0.7, 1],
-          colors: [warm, base, cool, base],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: base,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: const [0, 0.34, 0.7, 1],
+              colors: [warm, base, cool, base],
+            ),
+          ),
         ),
-      ),
-      child: child,
+        if (imageUrl != null)
+          CachedNetworkImage(
+            imageUrl: imageUrl!,
+            fit: BoxFit.cover,
+            fadeInDuration: const Duration(milliseconds: 320),
+            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        if (imageUrl != null)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: dark
+                    ? [
+                        const Color.fromRGBO(11, 9, 13, 0.58),
+                        const Color.fromRGBO(11, 9, 13, 0.76),
+                      ]
+                    : [
+                        const Color.fromRGBO(248, 250, 252, 0.62),
+                        const Color.fromRGBO(241, 246, 247, 0.78),
+                      ],
+              ),
+            ),
+          ),
+        child,
+      ],
     );
   }
 }

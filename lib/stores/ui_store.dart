@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../local/local_store.dart';
@@ -24,6 +25,9 @@ class UIStore extends ChangeNotifier {
 
   AppearanceMode appearance = AppearanceMode.system;
   ThemeAccent themeAccent = ThemeAccent.coral;
+  String backgroundImageUrls = '';
+  String? backgroundImageUrl;
+  int _backgroundIndex = -1;
 
   void notify(String text) {
     toast = text;
@@ -85,6 +89,8 @@ class UIStore extends ChangeNotifier {
   void loadAppearance(LocalStore local) {
     appearance = local.appearance;
     themeAccent = local.themeAccent;
+    backgroundImageUrls = local.prefs.backgroundImageUrls;
+    shuffleBackground(notify: false);
   }
 
   void setAppearance(AppearanceMode mode, LocalStore local) {
@@ -97,6 +103,50 @@ class UIStore extends ChangeNotifier {
     themeAccent = accent;
     local.setThemeAccent(accent);
     notifyListeners();
+  }
+
+  bool setBackgroundImageUrls(String raw, LocalStore local) {
+    final urls = _parseBackgroundUrls(raw);
+    if (raw.trim().isNotEmpty && urls.isEmpty) return false;
+    backgroundImageUrls = urls.join('\n');
+    local.setBackgroundImageUrls(backgroundImageUrls);
+    _backgroundIndex = -1;
+    shuffleBackground(notify: false);
+    notifyListeners();
+    return true;
+  }
+
+  void shuffleBackground({bool notify = true}) {
+    final urls = _parseBackgroundUrls(backgroundImageUrls);
+    if (urls.isEmpty) {
+      backgroundImageUrl = null;
+      _backgroundIndex = -1;
+    } else {
+      var next = Random().nextInt(urls.length);
+      if (urls.length > 1 && next == _backgroundIndex) {
+        next = (next + 1) % urls.length;
+      }
+      _backgroundIndex = next;
+      final uri = Uri.parse(urls[next]);
+      backgroundImageUrl = uri
+          .replace(fragment: 'mx-${DateTime.now().microsecondsSinceEpoch}')
+          .toString();
+    }
+    if (notify) notifyListeners();
+  }
+
+  List<String> _parseBackgroundUrls(String raw) {
+    final seen = <String>{};
+    final urls = <String>[];
+    for (final item in raw.split(RegExp(r'[\r\n]+'))) {
+      final value = item.trim();
+      final uri = Uri.tryParse(value);
+      if (uri == null || !uri.hasAuthority || (uri.scheme != 'http' && uri.scheme != 'https')) {
+        continue;
+      }
+      if (seen.add(value)) urls.add(value);
+    }
+    return urls;
   }
 
   @override

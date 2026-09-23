@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/route.dart';
+import '../theme/theme.dart';
 import 'account_view.dart';
 import 'detail_views.dart';
 import 'explore_views.dart';
@@ -20,11 +21,15 @@ class RoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    MXBrightness.value = Theme.of(context).brightness;
     final r = route;
     switch (r) {
       case PlaylistRoute():
         return PlaylistDetailView(
-            platform: r.platform, id: r.id, kind: r.kind, fromLibrary: r.fromLibrary);
+            platform: r.platform,
+            id: r.id,
+            kind: r.kind,
+            fromLibrary: r.fromLibrary);
       case AlbumRoute():
         return AlbumDetailView(platform: r.platform, id: r.id);
       case ArtistRoute():
@@ -47,41 +52,41 @@ class RoutePage extends StatelessWidget {
   Widget _simple(String name) {
     switch (name) {
       case 'daily':
-        return const DailyView();
+        return DailyView();
       case 'explore-playlists':
-        return const ExplorePlaylistsView();
+        return ExplorePlaylistsView();
       case 'explore-albums':
-        return const ExploreAlbumsView();
+        return ExploreAlbumsView();
       case 'genres':
-        return const GenresView();
+        return GenresView();
       case 'favorites':
-        return const FavoritesView();
+        return FavoritesView();
       case 'files':
-        return const LocalFilesView(path: '');
+        return LocalFilesView(path: '');
       case 'ingest-records':
-        return const IngestRecordsView();
+        return IngestRecordsView();
       case 'subscriptions':
-        return const SubscriptionsView();
+        return SubscriptionsView();
       case 'source-runs':
-        return const SourceRunsView();
+        return SourceRunsView();
       case 'server-logs':
-        return const ServerLogsView();
+        return ServerLogsView();
       case 'client-logs':
-        return const ClientLogsView();
+        return ClientLogsView();
       case 'recents':
-        return const RecentsView();
+        return RecentsView();
       case 'account':
-        return const AccountView();
+        return AccountView();
       case 'settings':
-        return const SettingsView();
+        return SettingsView();
       case 'settings-profile':
-        return const ProfileSettingsView();
+        return ProfileSettingsView();
       case 'settings-automation':
-        return const AutomationView();
+        return AutomationView();
       case 'settings-sources':
-        return const CustomSourcesView();
+        return CustomSourcesView();
       default:
-        return const PlaceholderScreen('未知页面');
+        return PlaceholderScreen('未知页面');
     }
   }
 }

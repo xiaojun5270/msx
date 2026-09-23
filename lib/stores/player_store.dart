@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 
 import '../api/api_client.dart';
@@ -61,7 +62,10 @@ class PlayerStore extends ChangeNotifier {
   }
 
   // ---- Engine + bridges ------------------------------------------------------
-  AudioPlayer _av = AudioPlayer();
+  AudioPlayer _av = AudioPlayer(
+    userAgent: 'Musix/1.0 (Android)',
+    useProxyForRequestHeaders: false,
+  );
   AudioPlayer get engine => _av;
 
   final StreamController<MediaItem?> _mediaItemCtrl =
@@ -725,6 +729,72 @@ class PlayerStore extends ChangeNotifier {
     return headers;
   }
 
+  Future<_PlaybackProbe> _probePlayback(
+    Uri url,
+    Map<String, String> headers,
+  ) async {
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', url)
+        ..headers.addAll(headers)
+        ..headers['Range'] = 'bytes=0-8191';
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 15));
+      final bytes = <int>[];
+      await for (final chunk
+          in response.stream.timeout(const Duration(seconds: 15))) {
+        final remaining = 8192 - bytes.length;
+        if (remaining <= 0) break;
+        bytes.addAll(chunk.length <= remaining ? chunk : chunk.take(remaining));
+        if (bytes.length >= 8192) break;
+      }
+      final finalUrl = response.request?.url ?? url;
+      final mime = (response.headers['content-type'] ?? '-')
+          .split(';')
+          .first
+          .trim()
+          .toLowerCase();
+      final magic = bytes
+          .take(8)
+          .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+          .join();
+      final prefix =
+          String.fromCharCodes(bytes.take(80)).trimLeft().toLowerCase();
+      final document = mime.contains('json') ||
+          mime.contains('html') ||
+          mime.startsWith('text/') ||
+          prefix.startsWith('{') ||
+          prefix.startsWith('[') ||
+          prefix.startsWith('<');
+      final encrypted = bytes.length >= 3 &&
+          ((bytes[0] == 0x7c && bytes[1] == 0xd5 && bytes[2] == 0x32) ||
+              (bytes[0] == 0x6b && bytes[1] == 0x67 && bytes[2] == 0x6d));
+      LocalLogStore.shared.info(
+        AppLogCategory.player,
+        'stream.probe',
+        fields: {
+          'status': '${response.statusCode}',
+          'mime': mime,
+          'bytes': '${bytes.length}',
+          'magic': magic,
+          'host': finalUrl.host,
+          'range': response.headers['content-range'] ??
+              response.headers['accept-ranges'] ??
+              '-',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiError('音源请求失败 (HTTP ${response.statusCode})');
+      }
+      if (document) throw const ApiError('音源接口返回了网页或 JSON，而不是音频');
+      if (encrypted) throw const ApiError('音源返回酷狗加密文件，无法直接播放');
+      if (bytes.isEmpty) throw const ApiError('音源返回空数据');
+      return _PlaybackProbe(finalUrl: finalUrl, mime: mime, magic: magic);
+    } finally {
+      client.close();
+    }
+  }
+
   Future<void> _playAt(int idx,
       {double position = 0, bool autoplay = true, bool recover = false}) async {
     final session = _session;
@@ -905,12 +975,18 @@ class PlayerStore extends ChangeNotifier {
       }
 
       final headers = _playbackHeaders(session.api.combinedCookieHeader());
-      final playDeadline = DateTime.now().add(const Duration(seconds: 20));
       _setSourceProgress(PlaybackSourcePhase.connecting);
+      final probe = await _probePlayback(playURL, headers);
+      if (mine != _token) return;
+      final engineHeaders = Map<String, String>.from(headers);
+      if (probe.finalUrl.host.toLowerCase() != playURL.host.toLowerCase()) {
+        engineHeaders.remove('Cookie');
+      }
+      final playDeadline = DateTime.now().add(const Duration(seconds: 35));
       _setSourceProgress(PlaybackSourcePhase.buffering);
       final loadedDuration = await _av
           .setAudioSource(
-            AudioSource.uri(playURL, headers: headers),
+            AudioSource.uri(probe.finalUrl, headers: engineHeaders),
             initialPosition: position > 0
                 ? Duration(milliseconds: (position * 1000).round())
                 : Duration.zero,
@@ -918,8 +994,8 @@ class PlayerStore extends ChangeNotifier {
           .timeout(playDeadline.difference(DateTime.now()));
       if (mine != _token) return;
       _loadedTrackKey = row.key;
-      _loadedURL = playURL;
-      _loadedHeaders = headers;
+      _loadedURL = probe.finalUrl;
+      _loadedHeaders = engineHeaders;
       if (loadedDuration != null) {
         final d = loadedDuration.inMilliseconds / 1000.0;
         if (d.isFinite && d > 0) duration = d;
@@ -931,7 +1007,9 @@ class PlayerStore extends ChangeNotifier {
         fields: {
           'track': row.key,
           'source': sourcePlatform ?? sourceKind ?? 'unknown',
-          'host': playURL.host,
+          'host': probe.finalUrl.host,
+          'mime': probe.mime,
+          'magic': probe.magic,
         },
       );
 
@@ -1593,6 +1671,18 @@ class PlayerStore extends ChangeNotifier {
     _av.dispose();
     super.dispose();
   }
+}
+
+class _PlaybackProbe {
+  final Uri finalUrl;
+  final String mime;
+  final String magic;
+
+  const _PlaybackProbe({
+    required this.finalUrl,
+    required this.mime,
+    required this.magic,
+  });
 }
 
 /// A recently detached playback whose server session may be reused for a quick

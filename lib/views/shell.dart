@@ -76,15 +76,15 @@ class _MobileShellState extends State<MobileShell> {
   Widget _rootFor(AppTab tab) {
     switch (tab) {
       case AppTab.home:
-        return const HomeView();
+        return HomeView();
       case AppTab.library:
-        return const LibraryView();
+        return LibraryView();
       case AppTab.recents:
-        return const RecentsView();
+        return RecentsView();
       case AppTab.profile:
-        return const AccountView();
+        return AccountView();
       case AppTab.search:
-        return const SearchView();
+        return SearchView();
     }
   }
 
@@ -92,7 +92,10 @@ class _MobileShellState extends State<MobileShell> {
     return Navigator(
       key: _navKeys[tab],
       onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => _rootFor(tab),
+        builder: (context) {
+          MXBrightness.value = Theme.of(context).brightness;
+          return _rootFor(tab);
+        },
         settings: settings,
       ),
     );

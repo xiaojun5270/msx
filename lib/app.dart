@@ -57,11 +57,14 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
       title: 'Musix',
       debugShowCheckedModeBanner: false,
       themeMode: ui.appearance.themeMode,
+      themeAnimationDuration: Duration.zero,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       builder: (context, child) {
-        MXBrightness.value = Theme.of(context).brightness;
-        return AppBackdrop(child: child ?? const SizedBox.shrink());
+        return AppBackdrop(
+          imageUrl: ui.backgroundImageUrl,
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       home: const _RootGate(),
     );
@@ -138,6 +141,7 @@ class _RootGateState extends State<_RootGate> {
 
   @override
   Widget build(BuildContext context) {
+    MXBrightness.value = Theme.of(context).brightness;
     final session = context.watch<SessionStore>();
     if (!session.ready) {
       return Scaffold(
@@ -148,8 +152,8 @@ class _RootGateState extends State<_RootGate> {
       );
     }
     if (!session.authed) {
-      return const LoginView();
+      return LoginView();
     }
-    return const MobileShell();
+    return MobileShell();
   }
 }

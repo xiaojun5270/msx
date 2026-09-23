@@ -219,11 +219,29 @@ class _SettingsViewState extends State<SettingsView> {
   PlaylistHealthConfig? _health;
   CookieCloudConfig? _cookie;
   int _subscriptionCount = 0;
+  final _backgroundUrls = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _backgroundUrls.text =
+        context.read<SessionStore>().local.prefs.backgroundImageUrls;
     WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
+
+  @override
+  void dispose() {
+    _backgroundUrls.dispose();
+    super.dispose();
+  }
+
+  void _saveBackgroundUrls(UIStore ui, SessionStore session) {
+    if (!ui.setBackgroundImageUrls(_backgroundUrls.text, session.local)) {
+      ui.notify('请输入有效的 HTTP 或 HTTPS 图片地址');
+      return;
+    }
+    _backgroundUrls.text = ui.backgroundImageUrls;
+    ui.notify(ui.backgroundImageUrl == null ? '已关闭随机背景' : '随机背景已保存');
   }
 
   Future<void> _reload() async {
@@ -640,6 +658,79 @@ class _SettingsViewState extends State<SettingsView> {
                 const SizedBox(height: 10),
                 Text('用于播放、选中状态和主要操作；更换后立即生效。',
                     style: TextStyle(color: MX.mute, fontSize: 12)),
+              ],
+            ),
+          ),
+          _divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.wallpaper_rounded, size: 17, color: MX.fg),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('随机背景图 URL',
+                          style: TextStyle(color: MX.fg, fontSize: 15)),
+                    ),
+                    IconButton(
+                      tooltip: '换一张',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: ui.backgroundImageUrl == null
+                          ? null
+                          : ui.shuffleBackground,
+                      icon: Icon(Icons.shuffle_rounded,
+                          size: 19, color: MX.ember),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _backgroundUrls,
+                  minLines: 1,
+                  maxLines: 3,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  style: TextStyle(color: MX.fg, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'https://image.example.com/random.jpg',
+                    hintStyle: TextStyle(color: MX.dimSoft, fontSize: 12),
+                    filled: true,
+                    fillColor: MX.fillStrong,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: MX.hairline),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: MX.hairline),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('支持随机图片接口；多个图床直链可分行填写。',
+                          style: TextStyle(color: MX.mute, fontSize: 11.5)),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      onPressed: () => _saveBackgroundUrls(ui, session),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: MX.ember,
+                        foregroundColor: MX.onAccent,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: const Icon(Icons.save_outlined, size: 16),
+                      label: const Text('保存'),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

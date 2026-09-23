@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -148,6 +149,7 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _brandMark(ThemeAccent accent) {
+    final ui = context.watch<UIStore>();
     return Row(
       children: [
         Container(
@@ -190,6 +192,17 @@ class _LoginViewState extends State<LoginView> {
                     letterSpacing: 1.1)),
           ],
         ),
+        const Spacer(),
+        if (ui.backgroundImageUrl != null)
+          IconButton(
+            tooltip: '换一张背景',
+            onPressed: ui.shuffleBackground,
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.08),
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.shuffle_rounded, size: 19),
+          ),
       ],
     );
   }
@@ -484,7 +497,8 @@ class _LoginBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = context.watch<UIStore>().themeAccent;
+    final ui = context.watch<UIStore>();
+    final accent = ui.themeAccent;
     return IgnorePointer(
       child: Stack(
         children: [
@@ -503,6 +517,15 @@ class _LoginBackground extends StatelessWidget {
               ),
             ),
           ),
+          if (ui.backgroundImageUrl != null)
+            Positioned.fill(
+              child: CachedNetworkImage(
+                imageUrl: ui.backgroundImageUrl!,
+                fit: BoxFit.cover,
+                fadeInDuration: const Duration(milliseconds: 320),
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
           Positioned(
             right: -120,
             top: -180,
