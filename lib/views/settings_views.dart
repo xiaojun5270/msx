@@ -13,6 +13,7 @@ import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
+import '../theme/glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -28,21 +29,18 @@ class _Card extends StatelessWidget {
   const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
+  Widget build(BuildContext context) => GlassSurface(
+        borderRadius: BorderRadius.circular(16),
+        blur: 26,
+        tint: const Color.fromRGBO(255, 255, 255, 0.12),
         padding: padding,
-        decoration: BoxDecoration(
-          color: MX.panel,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: MX.hairline),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 6,
-                offset: const Offset(0, 3)),
-          ],
+        showBorder: true,
+        showHighlight: false,
+        showShadow: true,
+        child: SizedBox(
+          width: double.infinity,
+          child: child,
         ),
-        child: child,
       );
 }
 

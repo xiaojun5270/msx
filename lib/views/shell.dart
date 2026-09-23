@@ -123,7 +123,7 @@ class _MobileShellState extends State<MobileShell> {
         player.track == null ? 0.0 : (ui.playerExpanded ? 169.0 : 88.0);
     final contentBottomInset = navExtent + playerExtent + 16;
     final bodyMedia = media.copyWith(
-      padding: media.padding.copyWith(bottom: contentBottomInset),
+      padding: media.padding.copyWith(bottom: safeBottom),
     );
 
     // Route intents raised anywhere (deep links, in-view navigation) are
@@ -152,11 +152,14 @@ class _MobileShellState extends State<MobileShell> {
           Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
-            body: MediaQuery(
-              data: bodyMedia,
-              child: IndexedStack(
-                index: _order.indexOf(_tab),
-                children: [for (final t in _order) _tabNavigator(t)],
+            body: Padding(
+              padding: EdgeInsets.only(bottom: contentBottomInset),
+              child: MediaQuery(
+                data: bodyMedia,
+                child: IndexedStack(
+                  index: _order.indexOf(_tab),
+                  children: [for (final t in _order) _tabNavigator(t)],
+                ),
               ),
             ),
             bottomNavigationBar: Column(
@@ -261,22 +264,32 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding:
           EdgeInsets.fromLTRB(14, 0, 14, bottomInset > 0 ? bottomInset : 8),
-      child: SizedBox(
-        height: 54,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            for (final tab in order) _item(tab),
-          ],
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(32),
+        blur: 18,
+        tint: const Color.fromRGBO(255, 255, 255, 0.10),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        showBorder: false,
+        showHighlight: false,
+        showShadow: false,
+        child: SizedBox(
+          height: 54,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              for (final tab in order) _item(tab, dark),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _item(AppTab tab) {
+  Widget _item(AppTab tab, bool dark) {
     final active = tab == current;
     final color = active ? MX.fg : MX.mute.withOpacity(0.76);
     return Expanded(
@@ -289,9 +302,14 @@ class _TabBar extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 1),
           padding: const EdgeInsets.symmetric(vertical: 3),
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: active
+                ? MX.fg.withOpacity(dark ? 0.10 : 0.12)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(27),
-            border: Border.all(color: Colors.transparent, width: 0.6),
+            border: Border.all(
+              color: active ? MX.fg.withOpacity(0.12) : Colors.transparent,
+              width: 0.6,
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api_client.dart';
 import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
+import '../theme/glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -23,7 +23,13 @@ class _AccountViewState extends State<AccountView> {
   List<(String, List<Playlist>)> _platformGroups = [];
   int _subscriptionCount = 0;
 
-  static const _weights = {'apple': 4, 'navidrome': 2, 'netease': 1, 'qqmusic': 1, 'kugou': 1};
+  static const _weights = {
+    'apple': 4,
+    'navidrome': 2,
+    'netease': 1,
+    'qqmusic': 1,
+    'kugou': 1
+  };
 
   @override
   void initState() {
@@ -33,9 +39,11 @@ class _AccountViewState extends State<AccountView> {
 
   Future<void> _load() async {
     final session = context.read<SessionStore>();
-    final cachedLib = session.peekPage('profile.libraries', LibraryPayload.fromJson);
+    final cachedLib =
+        session.peekPage('profile.libraries', LibraryPayload.fromJson);
     if (cachedLib != null) _applyLibraries(cachedLib);
-    final cachedPl = session.peekPage('profile.playlists', PlaylistsPayload.fromJson);
+    final cachedPl =
+        session.peekPage('profile.playlists', PlaylistsPayload.fromJson);
     if (cachedPl != null) {
       _playlists = (cachedPl.playlists ?? [])
           .where((p) => p.kind != 'favorites' && p.listKind != 'favorites')
@@ -49,16 +57,19 @@ class _AccountViewState extends State<AccountView> {
       session.apply(me);
     } catch (_) {}
 
-    final lib = await session.fetchPage('/api/me/libraries/playlists', cacheKey: 'profile.libraries', factory: LibraryPayload.fromJson);
+    final lib = await session.fetchPage('/api/me/libraries/playlists',
+        cacheKey: 'profile.libraries', factory: LibraryPayload.fromJson);
     if (lib != null) _applyLibraries(lib);
-    final box = await session.fetchPage('/api/my/playlists', cacheKey: 'profile.playlists', factory: PlaylistsPayload.fromJson);
+    final box = await session.fetchPage('/api/my/playlists',
+        cacheKey: 'profile.playlists', factory: PlaylistsPayload.fromJson);
     if (box != null) {
       _playlists = (box.playlists ?? [])
           .where((p) => p.kind != 'favorites' && p.listKind != 'favorites')
           .toList();
     }
     try {
-      final subs = await session.api.getJson('/api/subscriptions', SubscriptionsBox.fromJson);
+      final subs = await session.api
+          .getJson('/api/subscriptions', SubscriptionsBox.fromJson);
       _subscriptionCount = subs.items?.length ?? 0;
     } catch (_) {}
     if (mounted) setState(() {});
@@ -75,15 +86,20 @@ class _AccountViewState extends State<AccountView> {
     _platformGroups = out;
   }
 
-  int get _boundCount =>
-      context.read<SessionStore>().bindings.values.where((b) => b.bound == true).length;
+  int get _boundCount => context
+      .read<SessionStore>()
+      .bindings
+      .values
+      .where((b) => b.bound == true)
+      .length;
 
   AppRoute _playlistRoute(Playlist p) {
     final platform = p.platform ?? 'local';
     final kind = platform == 'local' || p.listKind == 'mine'
         ? ListKind.mine
         : (p.listKind == 'chart' ? ListKind.chart : ListKind.platform);
-    return PlaylistRoute(platform: platform, id: p.id, kind: kind, fromLibrary: true);
+    return PlaylistRoute(
+        platform: platform, id: p.id, kind: kind, fromLibrary: true);
   }
 
   @override
@@ -95,7 +111,9 @@ class _AccountViewState extends State<AccountView> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        title: Text('我的', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold, fontSize: 26)),
+        title: Text('我的',
+            style: TextStyle(
+                color: MX.fg, fontWeight: FontWeight.bold, fontSize: 26)),
         actions: [
           IconButton(
             icon: Icon(Icons.settings_outlined, color: MX.fg),
@@ -128,7 +146,8 @@ class _AccountViewState extends State<AccountView> {
   }
 
   Widget _hero(SessionStore session) {
-    final subtitle = '${session.role == 'admin' ? '管理员' : '普通账号'} · $_boundCount 个平台已连接';
+    final subtitle =
+        '${session.role == 'admin' ? '管理员' : '普通账号'} · $_boundCount 个平台已连接';
     return Column(
       children: [
         Container(
@@ -142,20 +161,26 @@ class _AccountViewState extends State<AccountView> {
         Text(session.nickname,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: MX.fg, fontSize: 22, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: MX.fg, fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Text(subtitle, style: TextStyle(color: MX.mute, fontSize: 14)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: MX.ember.withOpacity(0.12), borderRadius: BorderRadius.circular(999)),
+          decoration: BoxDecoration(
+              color: MX.ember.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(999)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.graphic_eq, size: 13, color: MX.ember),
               const SizedBox(width: 5),
               Text(session.role == 'admin' ? '管理员空间' : '个人音乐空间',
-                  style: TextStyle(color: MX.ember, fontSize: 12, fontWeight: FontWeight.w500)),
+                  style: TextStyle(
+                      color: MX.ember,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -174,7 +199,9 @@ class _AccountViewState extends State<AccountView> {
   Widget _metric(String value, String title) => Expanded(
         child: Column(
           children: [
-            Text(value, style: TextStyle(color: MX.fg, fontSize: 22, fontWeight: FontWeight.w600)),
+            Text(value,
+                style: TextStyle(
+                    color: MX.fg, fontSize: 22, fontWeight: FontWeight.w600)),
             const SizedBox(height: 3),
             Text(title, style: TextStyle(color: MX.mute, fontSize: 12)),
           ],
@@ -187,7 +214,9 @@ class _AccountViewState extends State<AccountView> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(title, style: TextStyle(color: MX.fg, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(title,
+                style: TextStyle(
+                    color: MX.fg, fontSize: 20, fontWeight: FontWeight.bold)),
             if (detail != null) ...[
               const SizedBox(width: 8),
               Text(detail, style: TextStyle(color: MX.mute, fontSize: 13)),
@@ -200,16 +229,19 @@ class _AccountViewState extends State<AccountView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('我的歌单', _playlists.isEmpty ? null : '${_playlists.length} 个'),
+        _sectionHeader(
+            '我的歌单', _playlists.isEmpty ? null : '${_playlists.length} 个'),
         if (_playlists.isEmpty)
-          _emptyRow(Icons.queue_music, '还没有歌单', '新建歌单后，可选用 MusicX 服务器可访问的 NAS 音乐目录。')
+          _emptyRow(
+              Icons.queue_music, '还没有歌单', '新建歌单后，可选用 MusicX 服务器可访问的 NAS 音乐目录。')
         else
-          Container(
-            decoration: BoxDecoration(color: MX.panel, borderRadius: BorderRadius.circular(16)),
+          _glassPanel(
             child: Column(
               children: [
                 for (var i = 0; i < _playlists.length; i++) ...[
-                  _playlistRow(ui, _playlists[i],
+                  _playlistRow(
+                      ui,
+                      _playlists[i],
                       _playlists[i].ingestEnabled == true ? '自动入库' : '手动入库',
                       _playlists[i].ingestEnabled == true ? MX.ember : MX.mute),
                   if (i < _playlists.length - 1)
@@ -225,7 +257,8 @@ class _AccountViewState extends State<AccountView> {
     );
   }
 
-  Widget _playlistRow(UIStore ui, Playlist p, String sourceLabel, Color sourceTint) {
+  Widget _playlistRow(
+      UIStore ui, Playlist p, String sourceLabel, Color sourceTint) {
     return InkWell(
       onTap: () => ui.open(_playlistRoute(p)),
       child: Padding(
@@ -242,9 +275,13 @@ class _AccountViewState extends State<AccountView> {
                   Text(p.displayTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: MX.fg, fontSize: 15, fontWeight: FontWeight.w500)),
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500)),
                   const SizedBox(height: 3),
-                  Text(sourceLabel, style: TextStyle(color: sourceTint, fontSize: 12)),
+                  Text(sourceLabel,
+                      style: TextStyle(color: sourceTint, fontSize: 12)),
                 ],
               ),
             ),
@@ -260,15 +297,19 @@ class _AccountViewState extends State<AccountView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader('资料库', '随时继续聆听'),
-        _actionCard(Icons.favorite, '喜欢的音乐', '歌曲、专辑与歌单', () => ui.open(const SimpleRoute('favorites'))),
+        _actionCard(Icons.favorite, '喜欢的音乐', '歌曲、专辑与歌单',
+            () => ui.open(const SimpleRoute('favorites'))),
         const SizedBox(height: 10),
         _actionCard(
             Icons.notifications,
             '订阅任务',
-            _subscriptionCount > 0 ? '$_subscriptionCount 个自动刷新任务' : '自动刷新歌单与榜单',
+            _subscriptionCount > 0
+                ? '$_subscriptionCount 个自动刷新任务'
+                : '自动刷新歌单与榜单',
             () => ui.open(const SimpleRoute('subscriptions'))),
         const SizedBox(height: 10),
-        _actionCard(Icons.folder, '本地文件', '设备上的离线音乐', () => ui.open(const SimpleRoute('files'))),
+        _actionCard(Icons.folder, '本地文件', '设备上的离线音乐',
+            () => ui.open(const SimpleRoute('files'))),
       ],
     );
   }
@@ -278,9 +319,11 @@ class _AccountViewState extends State<AccountView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader('管理', '同步与入库'),
-        _actionCard(Icons.graphic_eq, '音源整理记录', '整理与后台入库进度', () => ui.open(const SimpleRoute('source-runs'))),
+        _actionCard(Icons.graphic_eq, '音源整理记录', '整理与后台入库进度',
+            () => ui.open(const SimpleRoute('source-runs'))),
         const SizedBox(height: 10),
-        _actionCard(Icons.inbox, '入库记录', '下载、入库与失败原因', () => ui.open(const SimpleRoute('ingest-records'))),
+        _actionCard(Icons.inbox, '入库记录', '下载、入库与失败原因',
+            () => ui.open(const SimpleRoute('ingest-records'))),
       ],
     );
   }
@@ -298,20 +341,29 @@ class _AccountViewState extends State<AccountView> {
               padding: const EdgeInsets.only(top: 8, bottom: 10),
               child: Row(
                 children: [
-                  Container(width: 7, height: 7, decoration: BoxDecoration(color: MX.tone(group.$1), shape: BoxShape.circle)),
+                  Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                          color: MX.tone(group.$1), shape: BoxShape.circle)),
                   const SizedBox(width: 7),
-                  Text(MX.label(group.$1), style: TextStyle(color: MX.fg, fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text(MX.label(group.$1),
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(width: 6),
-                  Text('${group.$2.length} 个', style: TextStyle(color: MX.mute, fontSize: 12)),
+                  Text('${group.$2.length} 个',
+                      style: TextStyle(color: MX.mute, fontSize: 12)),
                 ],
               ),
             ),
-            Container(
-              decoration: BoxDecoration(color: MX.panel, borderRadius: BorderRadius.circular(16)),
+            _glassPanel(
               child: Column(
                 children: [
                   for (var i = 0; i < group.$2.length; i++) ...[
-                    _playlistRow(ui, group.$2[i], MX.label(group.$1), MX.tone(group.$1)),
+                    _playlistRow(
+                        ui, group.$2[i], MX.label(group.$1), MX.tone(group.$1)),
                     if (i < group.$2.length - 1)
                       Padding(
                         padding: const EdgeInsets.only(left: 80),
@@ -327,20 +379,22 @@ class _AccountViewState extends State<AccountView> {
     );
   }
 
-  Widget _actionCard(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _actionCard(
+      IconData icon, String title, String subtitle, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: Container(
+      child: _glassPanel(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: MX.panel, borderRadius: BorderRadius.circular(16)),
         child: Row(
           children: [
             Container(
               width: 40,
               height: 40,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: MX.ember.withOpacity(0.14), borderRadius: BorderRadius.circular(11)),
+              decoration: BoxDecoration(
+                  color: MX.ember.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(11)),
               child: Icon(icon, color: MX.ember, size: 20),
             ),
             const SizedBox(width: 14),
@@ -349,9 +403,14 @@ class _AccountViewState extends State<AccountView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title, style: TextStyle(color: MX.fg, fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(title,
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: TextStyle(color: MX.mute, fontSize: 12)),
+                  Text(subtitle,
+                      style: TextStyle(color: MX.mute, fontSize: 12)),
                 ],
               ),
             ),
@@ -362,9 +421,8 @@ class _AccountViewState extends State<AccountView> {
     );
   }
 
-  Widget _emptyRow(IconData icon, String title, String subtitle) => Container(
+  Widget _emptyRow(IconData icon, String title, String subtitle) => _glassPanel(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: MX.panel, borderRadius: BorderRadius.circular(16)),
         child: Row(
           children: [
             Icon(icon, color: MX.dim, size: 26),
@@ -374,13 +432,33 @@ class _AccountViewState extends State<AccountView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title, style: TextStyle(color: MX.fg, fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(title,
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: TextStyle(color: MX.mute, fontSize: 12)),
+                  Text(subtitle,
+                      style: TextStyle(color: MX.mute, fontSize: 12)),
                 ],
               ),
             ),
           ],
         ),
+      );
+
+  Widget _glassPanel({
+    required Widget child,
+    EdgeInsets padding = EdgeInsets.zero,
+  }) =>
+      GlassSurface(
+        borderRadius: BorderRadius.circular(16),
+        blur: 26,
+        tint: const Color.fromRGBO(255, 255, 255, 0.12),
+        padding: padding,
+        showBorder: true,
+        showHighlight: false,
+        showShadow: true,
+        child: SizedBox(width: double.infinity, child: child),
       );
 }
