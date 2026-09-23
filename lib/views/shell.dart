@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
@@ -101,6 +102,18 @@ class _MobileShellState extends State<MobileShell> {
     );
   }
 
+  Future<void> _handleSystemBack() async {
+    final nav = _navKeys[_tab]?.currentState;
+    if (nav != null && await nav.maybePop()) return;
+
+    if (_tab != AppTab.home) {
+      _selectTab(AppTab.home);
+      return;
+    }
+
+    SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ui = context.watch<UIStore>();
@@ -131,34 +144,41 @@ class _MobileShellState extends State<MobileShell> {
     // Present the aux bottom sheets (队列 / 换源 / 加入歌单) when requested.
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncSheets(ui));
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          extendBody: true,
-          body: MediaQuery(
-            data: bodyMedia,
-            child: IndexedStack(
-              index: _order.indexOf(_tab),
-              children: [for (final t in _order) _tabNavigator(t)],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleSystemBack();
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            body: MediaQuery(
+              data: bodyMedia,
+              child: IndexedStack(
+                index: _order.indexOf(_tab),
+                children: [for (final t in _order) _tabNavigator(t)],
+              ),
+            ),
+            bottomNavigationBar: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (player.track != null) const MiniPlayer(),
+                _TabBar(current: _tab, order: _order, onSelect: _selectTab),
+              ],
             ),
           ),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (player.track != null) const MiniPlayer(),
-              _TabBar(current: _tab, order: _order, onSelect: _selectTab),
-            ],
-          ),
-        ),
-        if (ui.toast.isNotEmpty)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            left: 0,
-            right: 0,
-            child: Center(child: _Toast(text: ui.toast)),
-          ),
-      ],
+          if (ui.toast.isNotEmpty)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 0,
+              right: 0,
+              child: Center(child: _Toast(text: ui.toast)),
+            ),
+        ],
+      ),
     );
   }
 
