@@ -123,8 +123,8 @@ class GlassSurface extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: _OptionalBackdropFilter(
+          sigma: blur,
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
@@ -177,63 +177,18 @@ class GlassSurface extends StatelessWidget {
   }
 }
 
-/// Generic panel using the same blur, veil, and highlight treatment as
-/// `liquid_glass_bottom_bar`, for non-tab surfaces such as the mini player.
-class LiquidGlassPanel extends StatelessWidget {
+class _OptionalBackdropFilter extends StatelessWidget {
+  final double sigma;
   final Widget child;
-  final BorderRadius borderRadius;
-  final double blurSigma;
 
-  const LiquidGlassPanel({
-    super.key,
-    required this.child,
-    this.borderRadius = const BorderRadius.all(Radius.circular(22)),
-    this.blurSigma = 20,
-  });
+  const _OptionalBackdropFilter({required this.sigma, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(40),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: ColoredBox(color: Colors.white.withAlpha(10)),
-              ),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.white.withAlpha(28),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              child,
-            ],
-          ),
-        ),
-      ),
+    if (sigma <= 0) return child;
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+      child: child,
     );
   }
 }

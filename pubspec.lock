@@ -382,11 +382,10 @@ packages:
   liquid_glass_bottom_bar:
     dependency: "direct main"
     description:
-      name: liquid_glass_bottom_bar
-      sha256: "31b19d83d6d10435bc75fafd1e7b5c90589334be1aa714b6139f0cbb6d9521df"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.6"
+      path: "packages/liquid_glass_bottom_bar"
+      relative: true
+    source: path
+    version: "0.0.6+musix.1"
   material_color_utilities:
     dependency: transitive
     description:

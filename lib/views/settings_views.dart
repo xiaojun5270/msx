@@ -31,7 +31,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GlassSurface(
         borderRadius: BorderRadius.circular(16),
-        blur: 30,
+        blur: 0,
         tint: Colors.transparent,
         padding: padding,
         showBorder: true,

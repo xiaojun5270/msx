@@ -46,9 +46,14 @@ class _MiniPlayerState extends State<MiniPlayer> {
             if (velocity < -180 && !expanded) ui.setPlayerExpanded(true);
             if (velocity > 180 && expanded) ui.setPlayerExpanded(false);
           },
-          child: LiquidGlassPanel(
+          child: GlassSurface(
             borderRadius: BorderRadius.circular(expanded ? 28 : 34),
-            blurSigma: 24,
+            blur: 0,
+            tint: Colors.transparent,
+            showBorder: true,
+            showHighlight: false,
+            showShadow: false,
+            pureBlur: true,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,

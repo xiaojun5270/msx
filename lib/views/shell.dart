@@ -282,8 +282,8 @@ class _TabBar extends StatelessWidget {
           height: 64,
           margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
           activeColor: ThemeAccent.current.color,
-          barBlurSigma: 20,
-          activeBlurSigma: 28,
+          barBlurSigma: 0,
+          activeBlurSigma: 0,
         ),
       ),
     );

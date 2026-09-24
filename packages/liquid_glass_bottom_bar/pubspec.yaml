@@ -1,0 +1,12 @@
+name: liquid_glass_bottom_bar
+description: Stable transparent liquid glass bottom bar for Musix.
+version: 0.0.6+musix.1
+publish_to: "none"
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
