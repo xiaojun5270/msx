@@ -119,7 +119,7 @@ class _MobileShellState extends State<MobileShell> {
     final player = context.watch<PlayerStore>();
     final media = MediaQuery.of(context);
     final safeBottom = media.padding.bottom > 8 ? media.padding.bottom : 8.0;
-    final navExtent = 64.0 + safeBottom;
+    final navExtent = 74.0 + safeBottom;
     final playerExtent =
         player.track == null ? 0.0 : (ui.playerExpanded ? 169.0 : 88.0);
     final contentBottomInset = navExtent + playerExtent + 16;
@@ -172,7 +172,8 @@ class _MobileShellState extends State<MobileShell> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (player.track != null) const MiniPlayer(),
-                _TabBar(current: _tab, order: _order, onSelect: _selectTab),
+                _LiquidDock(
+                    current: _tab, order: _order, onSelect: _selectTab),
               ],
             ),
           ),
@@ -258,11 +259,11 @@ class _MobileShellState extends State<MobileShell> {
   }
 }
 
-class _TabBar extends StatelessWidget {
+class _LiquidDock extends StatelessWidget {
   final AppTab current;
   final List<AppTab> order;
   final ValueChanged<AppTab> onSelect;
-  const _TabBar(
+  const _LiquidDock(
       {required this.current, required this.order, required this.onSelect});
 
   @override
@@ -284,11 +285,11 @@ class _TabBar extends StatelessWidget {
           ],
           currentIndex: order.indexOf(current),
           onTap: (index) => onSelect(order[index]),
-          height: 64,
-          margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+          height: 74,
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 0),
           activeColor: ThemeAccent.current.color,
-          barBlurSigma: 0,
-          activeBlurSigma: 0,
+          barBlurSigma: 20,
+          activeBlurSigma: 28,
         ),
       ),
     );
