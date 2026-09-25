@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -104,7 +103,7 @@ class _LoginViewState extends State<LoginView> {
     final ui = context.watch<UIStore>();
     final accent = ui.themeAccent;
     return Scaffold(
-      backgroundColor: MX.heroBase,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           const Positioned.fill(child: _LoginBackground()),
@@ -498,6 +497,9 @@ class _LoginBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ui = context.watch<UIStore>();
+    if (ui.backgroundImageUrl != null) {
+      return const IgnorePointer(child: SizedBox.expand());
+    }
     final accent = ui.themeAccent;
     return IgnorePointer(
       child: Stack(
@@ -517,15 +519,6 @@ class _LoginBackground extends StatelessWidget {
               ),
             ),
           ),
-          if (ui.backgroundImageUrl != null)
-            Positioned.fill(
-              child: CachedNetworkImage(
-                imageUrl: ui.backgroundImageUrl!,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 320),
-                errorWidget: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
           Positioned(
             right: -120,
             top: -180,

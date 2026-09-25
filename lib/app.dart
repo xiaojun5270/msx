@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'stores/player_store.dart';
@@ -61,9 +62,25 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       builder: (context, child) {
-        return AppBackdrop(
-          imageUrl: ui.backgroundImageUrl,
-          child: child ?? const SizedBox.shrink(),
+        final brightness = Theme.of(context).brightness;
+        final iconBrightness = brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: iconBrightness,
+            statusBarBrightness: brightness,
+            systemStatusBarContrastEnforced: false,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
+            systemNavigationBarIconBrightness: iconBrightness,
+            systemNavigationBarContrastEnforced: false,
+          ),
+          child: AppBackdrop(
+            imageUrl: ui.backgroundImageUrl,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: const _RootGate(),

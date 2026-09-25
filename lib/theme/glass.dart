@@ -3,8 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'theme.dart';
 
-/// App-wide backdrop with broad color refraction for glass surfaces to reveal.
-/// The bands stay subtle so artwork and dense library content remain primary.
+/// App-wide backdrop. A custom image is shown without any color veil so every
+/// transparent surface reveals the source image unchanged.
 class AppBackdrop extends StatelessWidget {
   final Widget child;
   final String? imageUrl;
@@ -42,26 +42,10 @@ class AppBackdrop extends StatelessWidget {
           CachedNetworkImage(
             imageUrl: imageUrl!,
             fit: BoxFit.cover,
-            fadeInDuration: const Duration(milliseconds: 320),
+            fadeInDuration: Duration.zero,
+            fadeOutDuration: Duration.zero,
+            useOldImageOnUrlChange: true,
             errorWidget: (_, __, ___) => const SizedBox.shrink(),
-          ),
-        if (imageUrl != null)
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: dark
-                    ? [
-                        const Color.fromRGBO(11, 9, 13, 0.58),
-                        const Color.fromRGBO(11, 9, 13, 0.76),
-                      ]
-                    : [
-                        const Color.fromRGBO(248, 250, 252, 0.62),
-                        const Color.fromRGBO(241, 246, 247, 0.78),
-                      ],
-              ),
-            ),
           ),
         child,
       ],
