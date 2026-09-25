@@ -1,4 +1,43 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../stores/ui_store.dart';
+import 'glass.dart';
 import 'theme.dart';
+
+PageRoute<T> instantPageRoute<T>({
+  required WidgetBuilder builder,
+  RouteSettings? settings,
+  bool fullscreenDialog = false,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    opaque: true,
+    fullscreenDialog: fullscreenDialog,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+    pageBuilder: (context, animation, secondaryAnimation) =>
+        _OpaquePageBase(child: builder(context)),
+  );
+}
+
+/// Gives every routed page its own opaque backdrop (ink base + optional user
+/// background image). Without this, pages are fully transparent while their
+/// route is flagged `opaque: true`, so the compositor leaves the previous
+/// page's pixels on screen (the "residual afterimage") and the single global
+/// backdrop's accent tint bleeds through onto every page. Painting a per-page
+/// opaque base makes `opaque: true` truthful and isolates each page.
+class _OpaquePageBase extends StatelessWidget {
+  final Widget child;
+  const _OpaquePageBase({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg =
+        context.select<UIStore, String?>((store) => store.backgroundImageUrl);
+    return AppBackdrop(imageUrl: bg, child: child);
+  }
+}
 
 /// Navigation destination — mirrors Swift `enum Route`.
 /// Implemented as a sealed class hierarchy with value equality so it can key

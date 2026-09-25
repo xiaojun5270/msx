@@ -54,7 +54,7 @@ class _SearchViewState extends State<SearchView> {
   void _openResults() {
     final store = _store;
     if (store == null) return;
-    Navigator.of(context).push(MaterialPageRoute(
+    Navigator.of(context).push(instantPageRoute(
       builder: (_) => ChangeNotifierProvider.value(
         value: store,
         child: const SearchResultsView(),

@@ -8,6 +8,7 @@ import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/glass.dart';
+import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'account_view.dart';
 import 'home_view.dart';
@@ -18,21 +19,6 @@ import 'route_page.dart';
 import 'search_view.dart';
 import 'sheets.dart';
 import 'source_organization_view.dart';
-
-PageRoute<T> _instantPageRoute<T>({
-  required WidgetBuilder builder,
-  RouteSettings? settings,
-  bool fullscreenDialog = false,
-}) {
-  return PageRouteBuilder<T>(
-    settings: settings,
-    opaque: true,
-    fullscreenDialog: fullscreenDialog,
-    transitionDuration: Duration.zero,
-    reverseTransitionDuration: Duration.zero,
-    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
-  );
-}
 
 /// The five-tab mobile shell. Mirrors Swift `MobileShell`: one tab each for
 /// 首页 / 资料库 / 最近播放 / 我的 / 搜索, each hosting its own navigation stack,
@@ -82,7 +68,7 @@ class _MobileShellState extends State<MobileShell> {
     if (route == null) return;
     ui.consumePendingRoute();
     final nav = _navKeys[_tab]?.currentState;
-    nav?.push(_instantPageRoute(
+    nav?.push(instantPageRoute(
       builder: (_) => RoutePage(route: route),
       settings: RouteSettings(name: route.heroId),
     ));
@@ -106,7 +92,7 @@ class _MobileShellState extends State<MobileShell> {
   Widget _tabNavigator(AppTab tab) {
     return Navigator(
       key: _navKeys[tab],
-      onGenerateRoute: (settings) => _instantPageRoute(
+      onGenerateRoute: (settings) => instantPageRoute(
         builder: (context) {
           MXBrightness.value = Theme.of(context).brightness;
           return _rootFor(tab);
@@ -210,7 +196,7 @@ class _MobileShellState extends State<MobileShell> {
       _organizationShown = true;
       final tracks = List<Track>.from(ui.organizationTracks);
       Navigator.of(context, rootNavigator: true)
-          .push(_instantPageRoute(
+          .push(instantPageRoute(
         builder: (_) => SourceOrganizationView(tracks: tracks),
         fullscreenDialog: true,
       ))
@@ -253,16 +239,7 @@ class _MobileShellState extends State<MobileShell> {
     if (player.nowPlayingOpen && !_nowPlayingShown) {
       _nowPlayingShown = true;
       Navigator.of(context, rootNavigator: true)
-          .push(PageRouteBuilder(
-        opaque: true,
-        transitionDuration: const Duration(milliseconds: 320),
-        pageBuilder: (_, __, ___) => const NowPlayingView(),
-        transitionsBuilder: (_, anim, __, child) => SlideTransition(
-          position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: child,
-        ),
-      ))
+          .push(instantPageRoute(builder: (_) => const NowPlayingView()))
           .then((_) {
         _nowPlayingShown = false;
         player.setNowPlayingOpen(false);

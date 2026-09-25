@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../api/source_management.dart';
 import '../models/models.dart';
 import '../stores/session_store.dart';
+import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'ingest_records_view.dart';
 
@@ -106,7 +107,7 @@ class _SourceRunsViewState extends State<SourceRunsView> {
   }
 
   Widget _runRow(SourceSubstitutionRun run) => InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        onTap: () => Navigator.of(context).push(instantPageRoute(
           builder: (_) => SourceOrganizationView(run: run),
         )),
         child: Container(
@@ -415,7 +416,8 @@ class _SourceOrganizationViewState extends State<SourceOrganizationView> {
             Text('整理成功的歌曲会陆续加入下载队列。', style: TextStyle(color: MX.dim, fontSize: 14)),
           const SizedBox(height: 14),
           OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const IngestRecordsView())),
+            onPressed: () => Navigator.of(context)
+                .push(instantPageRoute(builder: (_) => const IngestRecordsView())),
             icon: const Icon(Icons.open_in_new, size: 16),
             label: const Text('查看入库记录'),
           ),

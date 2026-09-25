@@ -15,14 +15,12 @@ class AppBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final base = dark ? const Color(0xFF0B090D) : const Color(0xFFF1F4F7);
-    final warm = Color.alphaBlend(
-      ThemeAccent.current.color.withOpacity(dark ? 0.14 : 0.10),
-      dark ? const Color(0xFF171219) : const Color(0xFFFBFCFD),
-    );
-    final cool = Color.alphaBlend(
-      const Color(0xFF39A88F).withOpacity(dark ? 0.10 : 0.07),
-      dark ? const Color(0xFF0D1213) : const Color(0xFFF4F8F7),
-    );
+    // Neutral ink gradient only — no accent/teal tint. Keeping the accent out
+    // of the shared backdrop stops the theme color from bleeding onto every
+    // page; the accent still shows on deliberate chrome (hero, active tab,
+    // glass tint, controls).
+    final top = dark ? const Color(0xFF141019) : const Color(0xFFFBFCFD);
+    final bottom = dark ? const Color(0xFF08070A) : const Color(0xFFEDF1F4);
 
     return Stack(
       fit: StackFit.expand,
@@ -31,10 +29,10 @@ class AppBackdrop extends StatelessWidget {
           decoration: BoxDecoration(
             color: base,
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              stops: const [0, 0.34, 0.7, 1],
-              colors: [warm, base, cool, base],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0, 0.5, 1],
+              colors: [top, base, bottom],
             ),
           ),
         ),
