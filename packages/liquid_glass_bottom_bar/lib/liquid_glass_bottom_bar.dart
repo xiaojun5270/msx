@@ -50,7 +50,6 @@ class LiquidGlassBottomBar extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final foreground = Theme.of(context).colorScheme.onSurface;
     final inactive = foreground.withOpacity(dark ? 0.72 : 0.64);
-    final edge = foreground.withOpacity(dark ? 0.18 : 0.24);
 
     return SafeArea(
       top: false,
@@ -58,118 +57,58 @@ class LiquidGlassBottomBar extends StatelessWidget {
         padding: margin,
         child: SizedBox(
           height: barHeight,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: edge, width: 0.8),
-              ),
-              child: Stack(
-                children: [
-                  _ActivePill(
-                    count: items.length,
-                    currentIndex: currentIndex,
-                    edge: edge,
-                  ),
-                  Row(
-                    children: List.generate(items.length, (index) {
-                      final item = items[index];
-                      final selected = index == currentIndex;
-                      final color = selected ? activeColor : inactive;
-                      return Expanded(
-                        child: InkWell(
-                          onTap: () => onTap(index),
-                          customBorder: const StadiumBorder(),
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          hoverColor: Colors.transparent,
-                          focusColor: Colors.transparent,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Icon(
-                                    selected
-                                        ? (item.activeIcon ?? item.icon)
-                                        : item.icon,
-                                    size: 22,
-                                    color: color,
-                                  ),
-                                  if ((item.badge ?? 0) > 0)
-                                    Positioned(
-                                      right: -9,
-                                      top: -7,
-                                      child: _Badge(count: item.badge!),
-                                    ),
-                                ],
-                              ),
-                              if (showLabels) ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  item.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: 10,
-                                    fontWeight: selected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ],
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final item = items[index];
+              final selected = index == currentIndex;
+              final color = selected ? activeColor : inactive;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(index),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
+                            selected
+                                ? (item.activeIcon ?? item.icon)
+                                : item.icon,
+                            size: 22,
+                            color: color,
+                          ),
+                          if ((item.badge ?? 0) > 0)
+                            Positioned(
+                              right: -9,
+                              top: -7,
+                              child: _Badge(count: item.badge!),
+                            ),
+                        ],
+                      ),
+                      if (showLabels) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
-                      );
-                    }),
+                      ],
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            }),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ActivePill extends StatelessWidget {
-  final int count;
-  final int currentIndex;
-  final Color edge;
-
-  const _ActivePill({
-    required this.count,
-    required this.currentIndex,
-    required this.edge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final slotWidth = constraints.maxWidth / count;
-        return AnimatedPositioned(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutCubic,
-          left: slotWidth * currentIndex + 6,
-          top: 6,
-          width: slotWidth - 12,
-          bottom: 6,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: edge, width: 0.8),
-            ),
-          ),
-        );
-      },
     );
   }
 }

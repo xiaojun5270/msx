@@ -163,7 +163,12 @@ class _MobileShellState extends State<MobileShell> {
                 ),
               ),
             ),
-            bottomNavigationBar: Column(
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (player.track != null) const MiniPlayer(),
