@@ -1,7 +1,5 @@
 import 'package:home_widget/home_widget.dart';
 
-import '../models/models.dart';
-
 /// Home-screen widget bridge — mirrors Swift `WidgetBridge`.
 /// Writes the current playback snapshot into the shared widget store and asks
 /// the OS to refresh the AppWidget. The Android widget layout + provider are

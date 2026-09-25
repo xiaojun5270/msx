@@ -23,9 +23,9 @@ class HomeView extends StatefulWidget {
 class _ShelfState {
   ShelfRow row;
   bool loading;
-  bool failed;
+  bool failed = false;
   DateTime? loadedAt;
-  _ShelfState(this.row, {this.loading = true, this.failed = false, this.loadedAt});
+  _ShelfState(this.row, {this.loading = true, this.loadedAt});
 }
 
 class _HomeViewState extends State<HomeView> {

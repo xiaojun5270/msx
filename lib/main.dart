@@ -22,8 +22,13 @@ Future<void> main() async {
     WidgetsBinding.instance.addPersistentFrameCallback((_) {
       if (!debugPaintBaselinesEnabled) return;
       debugPaintBaselinesEnabled = false;
+      late RenderObjectVisitor repaint;
+      repaint = (renderObject) {
+        renderObject.markNeedsPaint();
+        renderObject.visitChildren(repaint);
+      };
       for (final renderView in RendererBinding.instance.renderViews) {
-        renderView.markNeedsPaint();
+        renderView.visitChildren(repaint);
       }
       WidgetsBinding.instance.scheduleFrame();
     });

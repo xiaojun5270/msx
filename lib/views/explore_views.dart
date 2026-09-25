@@ -773,8 +773,6 @@ class _FavoritesViewState extends State<FavoritesView> {
     }
   }
 
-  List<Track> get _ingestible => _tracks.where(LibraryIngest.canIngest).toList();
-
   @override
   void initState() {
     super.initState();

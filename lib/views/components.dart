@@ -50,7 +50,8 @@ class CoverArt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final api = context.read<SessionStore>().api;
-    final radius = circle ? BorderRadius.circular(_w.clamp(0, _h) / 2 + _h) : BorderRadius.circular(corner);
+    final radius =
+        BorderRadius.circular(circle ? (_w < _h ? _w : _h) / 2 : corner);
     Widget child;
 
     final dataImg = (src != null && src!.startsWith('data:image')) ? dataUrlImage(src!) : null;
@@ -74,7 +75,7 @@ class CoverArt extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: circle ? BorderRadius.circular(9999) : BorderRadius.circular(corner),
+      borderRadius: radius,
       child: SizedBox(width: size, height: height ?? size, child: child),
     );
   }

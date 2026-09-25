@@ -32,7 +32,6 @@ class _IngestRecordsViewState extends State<IngestRecordsView> {
   int _total = 0;
   final Set<String> _retrying = {};
   bool _loading = true;
-  String _query = '';
   String _debounced = '';
   int _limit = _pageSize;
   String _platform = 'all';
@@ -130,7 +129,6 @@ class _IngestRecordsViewState extends State<IngestRecordsView> {
   }
 
   void _onQueryChanged(String v) {
-    setState(() => _query = v);
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       final trimmed = v.trim();

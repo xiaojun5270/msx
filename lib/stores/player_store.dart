@@ -85,15 +85,11 @@ class PlayerStore extends ChangeNotifier {
   // ---- Internal bookkeeping (mirrors Swift private state) --------------------
   int _token = 0;
   int _listenReportedForToken = -1;
-  int _controlRevision = 0;
   String? _playbackIntentID;
   String? _playbackSessionID;
   bool _wantsPlayback = false;
   List<int> _shuffleSeq = [];
   String? _recordingCorrespondence;
-  String? _activeLocalFileID;
-  final Set<String> _failedLocalPlaybackFileIDs = {};
-  bool _usedLocalFileFallback = false;
   bool _recovering = false;
   String? _loadedTrackKey;
   Uri? _loadedURL;
@@ -114,7 +110,6 @@ class PlayerStore extends ChangeNotifier {
   final Map<String, Timer> _retainedExpiry = {};
 
   void _setWantsPlayback(bool value) {
-    if (_wantsPlayback != value) _controlRevision += 1;
     _wantsPlayback = value;
   }
 
@@ -174,7 +169,6 @@ class PlayerStore extends ChangeNotifier {
   Future<void> clearForSignOut() async {
     _token += 1;
     _lyricsToken += 1;
-    _controlRevision += 1;
     _preheatRevision += 1;
     _setWantsPlayback(false);
     for (final timer in _retainedExpiry.values) {
@@ -213,7 +207,6 @@ class PlayerStore extends ChangeNotifier {
     _loadedURL = null;
     _loadedHeaders = const {};
     _recordingCorrespondence = null;
-    _activeLocalFileID = null;
     _recovering = false;
     sourceProgress = PlaybackSourceProgress(phase: PlaybackSourcePhase.idle);
     _session?.local.clearPlayer();
@@ -326,7 +319,6 @@ class PlayerStore extends ChangeNotifier {
   void requestPause() {
     if (loading) return;
     if (!_isActivelyPlaying && !playing) return;
-    _controlRevision += 1;
     _stopPreheat();
     _setWantsPlayback(false);
     _av.pause();
@@ -337,7 +329,6 @@ class PlayerStore extends ChangeNotifier {
   Future<void> requestPauseAsync() async => requestPause();
 
   Future<void> toggle() async {
-    _controlRevision += 1;
     if (track == null || index < 0 || index >= queue.length) return;
     if (loading) {
       _cancelLoading();
@@ -879,8 +870,6 @@ class PlayerStore extends ChangeNotifier {
     final mine = _token;
     if (!recover) {
       _recovering = false;
-      _failedLocalPlaybackFileIDs.clear();
-      _usedLocalFileFallback = false;
     }
     _recovering = recover;
 
@@ -901,7 +890,6 @@ class PlayerStore extends ChangeNotifier {
     selectedSourceKey = null;
     sourceKind = null;
     sourcePlatform = null;
-    _activeLocalFileID = null;
     _setSourceProgress(PlaybackSourcePhase.resolving);
     lyrics = [];
     notifyListeners();
@@ -991,7 +979,6 @@ class PlayerStore extends ChangeNotifier {
         _playbackSessionID = result.sessionId;
         sourceKind = result.sourceKind;
         sourcePlatform = result.sourcePlatform;
-        _activeLocalFileID = result.fileId;
         trial = result.isPreview;
         _recordingCorrespondence = result.recordingCorrespondence;
         if (result.sourcePlatform != null && result.sourceTrackId != null) {

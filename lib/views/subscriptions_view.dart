@@ -1014,7 +1014,7 @@ class _SubscriptionDetailViewState extends State<SubscriptionDetailView> {
           parts.add('尚未运行');
           break;
         default:
-          parts.add(status!);
+          parts.add(status);
       }
     }
     if (at?.isNotEmpty ?? false) parts.add(_relative(at));
