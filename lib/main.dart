@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -16,6 +17,18 @@ import 'stores/ui_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  assert(() {
+    debugPaintBaselinesEnabled = false;
+    WidgetsBinding.instance.addPersistentFrameCallback((_) {
+      if (!debugPaintBaselinesEnabled) return;
+      debugPaintBaselinesEnabled = false;
+      for (final renderView in RendererBinding.instance.renderViews) {
+        renderView.markNeedsPaint();
+      }
+      WidgetsBinding.instance.scheduleFrame();
+    });
+    return true;
+  }());
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Persistence must be ready before any store reads it.

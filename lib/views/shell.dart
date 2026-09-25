@@ -19,6 +19,21 @@ import 'search_view.dart';
 import 'sheets.dart';
 import 'source_organization_view.dart';
 
+PageRoute<T> _instantPageRoute<T>({
+  required WidgetBuilder builder,
+  RouteSettings? settings,
+  bool fullscreenDialog = false,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    opaque: true,
+    fullscreenDialog: fullscreenDialog,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+  );
+}
+
 /// The five-tab mobile shell. Mirrors Swift `MobileShell`: one tab each for
 /// 首页 / 资料库 / 最近播放 / 我的 / 搜索, each hosting its own navigation stack,
 /// with the mini player + tab bar as persistent bottom chrome and the toast
@@ -67,7 +82,7 @@ class _MobileShellState extends State<MobileShell> {
     if (route == null) return;
     ui.consumePendingRoute();
     final nav = _navKeys[_tab]?.currentState;
-    nav?.push(MaterialPageRoute(
+    nav?.push(_instantPageRoute(
       builder: (_) => RoutePage(route: route),
       settings: RouteSettings(name: route.heroId),
     ));
@@ -91,7 +106,7 @@ class _MobileShellState extends State<MobileShell> {
   Widget _tabNavigator(AppTab tab) {
     return Navigator(
       key: _navKeys[tab],
-      onGenerateRoute: (settings) => MaterialPageRoute(
+      onGenerateRoute: (settings) => _instantPageRoute(
         builder: (context) {
           MXBrightness.value = Theme.of(context).brightness;
           return _rootFor(tab);
@@ -195,7 +210,7 @@ class _MobileShellState extends State<MobileShell> {
       _organizationShown = true;
       final tracks = List<Track>.from(ui.organizationTracks);
       Navigator.of(context, rootNavigator: true)
-          .push(MaterialPageRoute(
+          .push(_instantPageRoute(
         builder: (_) => SourceOrganizationView(tracks: tracks),
         fullscreenDialog: true,
       ))

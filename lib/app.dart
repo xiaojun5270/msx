@@ -14,8 +14,8 @@ import 'views/deep_link.dart';
 import 'views/login_view.dart';
 import 'views/shell.dart';
 
-class _TransparentFadePageTransitionsBuilder extends PageTransitionsBuilder {
-  const _TransparentFadePageTransitionsBuilder();
+class _NoPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoPageTransitionsBuilder();
 
   @override
   Widget buildTransitions<T>(
@@ -25,14 +25,7 @@ class _TransparentFadePageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    return FadeTransition(
-      opacity: CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      ),
-      child: child,
-    );
+    return child;
   }
 }
 
@@ -127,12 +120,12 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
       colorScheme: scheme,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: _TransparentFadePageTransitionsBuilder(),
-          TargetPlatform.fuchsia: _TransparentFadePageTransitionsBuilder(),
-          TargetPlatform.iOS: _TransparentFadePageTransitionsBuilder(),
-          TargetPlatform.linux: _TransparentFadePageTransitionsBuilder(),
-          TargetPlatform.macOS: _TransparentFadePageTransitionsBuilder(),
-          TargetPlatform.windows: _TransparentFadePageTransitionsBuilder(),
+          TargetPlatform.android: _NoPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: _NoPageTransitionsBuilder(),
+          TargetPlatform.iOS: _NoPageTransitionsBuilder(),
+          TargetPlatform.linux: _NoPageTransitionsBuilder(),
+          TargetPlatform.macOS: _NoPageTransitionsBuilder(),
+          TargetPlatform.windows: _NoPageTransitionsBuilder(),
         },
       ),
       scaffoldBackgroundColor: Colors.transparent,
