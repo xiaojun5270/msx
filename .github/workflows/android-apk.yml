@@ -33,7 +33,7 @@ jobs:
           cache: true
 
       - name: Complete Android project files
-        run: flutter create --platforms=android --org com.musix --project-name musix .
+        run: flutter create --empty --platforms=android --org com.musix --project-name musix .
 
       - name: Install dependencies
         run: flutter pub get
