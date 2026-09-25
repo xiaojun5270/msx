@@ -13,7 +13,6 @@ import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
-import '../theme/glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -22,22 +21,15 @@ import 'components.dart';
 // Shared building blocks — mirror the private helpers in Swift SettingsViews.
 // ===========================================================================
 
-/// Rounded panel used across the settings cards (Swift `settingsMaterialCard`).
+/// Unframed section content shared by all settings pages.
 class _Card extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
 
   @override
-  Widget build(BuildContext context) => GlassSurface(
-        borderRadius: BorderRadius.circular(16),
-        blur: 0,
-        tint: Colors.transparent,
+  Widget build(BuildContext context) => Padding(
         padding: padding,
-        showBorder: true,
-        showHighlight: false,
-        showShadow: false,
-        pureBlur: true,
         child: SizedBox(
           width: double.infinity,
           child: child,

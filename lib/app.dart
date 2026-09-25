@@ -14,6 +14,28 @@ import 'views/deep_link.dart';
 import 'views/login_view.dart';
 import 'views/shell.dart';
 
+class _TransparentFadePageTransitionsBuilder extends PageTransitionsBuilder {
+  const _TransparentFadePageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ),
+      child: child,
+    );
+  }
+}
+
 /// Root widget. Resolves the active [Brightness] into [MXBrightness] (which the
 /// `MX` color tokens read) and hosts the app shell. Mirrors Swift `RootView`.
 class MusixApp extends StatefulWidget {
@@ -48,16 +70,23 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final ui = context.watch<UIStore>();
-    MXBrightness.value = switch (ui.appearance) {
+    final appearance =
+        context.select<UIStore, AppearanceMode>((store) => store.appearance);
+    final themeAccent =
+        context.select<UIStore, ThemeAccent>((store) => store.themeAccent);
+    final backgroundImageUrl =
+        context.select<UIStore, String?>((store) => store.backgroundImageUrl);
+    ThemeAccent.current = themeAccent;
+    MXBrightness.value = switch (appearance) {
       AppearanceMode.light => Brightness.light,
       AppearanceMode.dark => Brightness.dark,
       AppearanceMode.system => _platformBrightness,
     };
     return MaterialApp(
       title: 'Musix',
+      color: Colors.transparent,
       debugShowCheckedModeBanner: false,
-      themeMode: ui.appearance.themeMode,
+      themeMode: appearance.themeMode,
       themeAnimationDuration: Duration.zero,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
@@ -78,7 +107,7 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
             systemNavigationBarContrastEnforced: false,
           ),
           child: AppBackdrop(
-            imageUrl: ui.backgroundImageUrl,
+            imageUrl: backgroundImageUrl,
             child: child ?? const SizedBox.shrink(),
           ),
         );
@@ -96,6 +125,16 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _TransparentFadePageTransitionsBuilder(),
+          TargetPlatform.fuchsia: _TransparentFadePageTransitionsBuilder(),
+          TargetPlatform.iOS: _TransparentFadePageTransitionsBuilder(),
+          TargetPlatform.linux: _TransparentFadePageTransitionsBuilder(),
+          TargetPlatform.macOS: _TransparentFadePageTransitionsBuilder(),
+          TargetPlatform.windows: _TransparentFadePageTransitionsBuilder(),
+        },
+      ),
       scaffoldBackgroundColor: Colors.transparent,
       canvasColor: Colors.transparent,
       appBarTheme: const AppBarTheme(
