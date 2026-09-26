@@ -758,18 +758,19 @@ class _ShelfSection extends StatelessWidget {
         itemCount: items.length + (_hasGuessCard ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(width: 16),
         itemBuilder: (_, i) {
-          if (i < items.length) {
-            return _HomeCard(
-                item: items[i],
-                shelfId: row.id,
-                layout: row.layout,
-                width: width);
+          if (_hasGuessCard && i == 0) {
+            if (guessTracks.isEmpty) {
+              return SkeletonBar(width: width, height: height, corner: 12);
+            }
+            return _GuessPlaylistCard(
+                tracks: guessTracks, width: width, height: height);
           }
-          if (guessTracks.isEmpty) {
-            return SkeletonBar(width: width, height: height, corner: 12);
-          }
-          return _GuessPlaylistCard(
-              tracks: guessTracks, width: width, height: height);
+          final itemIndex = i - (_hasGuessCard ? 1 : 0);
+          return _HomeCard(
+              item: items[itemIndex],
+              shelfId: row.id,
+              layout: row.layout,
+              width: width);
         },
       ),
     );
