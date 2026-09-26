@@ -32,7 +32,7 @@ class _HomeViewState extends State<HomeView> {
   static const _kinds = [
     ('daily', 'hero'),
     ('taste', 'tracks'),
-    ('guess', 'tracks'),
+    ('guess', 'guess'),
     ('playlists', 'playlists'),
     ('albums', 'albums'),
     ('artists', 'artists'),
@@ -190,10 +190,13 @@ class _HomeViewState extends State<HomeView> {
   List<Widget> _shelfBlock(String id) {
     final st = _shelves[id];
     if (st == null) return const [];
+    if (id == 'guess') {
+      return [_RecentShelf(generation: _generation)];
+    }
     return [
       _ShelfSection(state: st),
+      if (id == 'daily') _GuessYouLikeSection(state: _shelves['guess']),
       if (id == 'daily' && _dailyMix != null) _dailyMixEntry(_dailyMix!),
-      if (id == 'guess') _RecentShelf(generation: _generation),
     ];
   }
 
@@ -298,6 +301,162 @@ class _HomeViewState extends State<HomeView> {
           ),
           OutlinedButton(onPressed: _refresh, child: const Text('重试')),
         ],
+      ),
+    );
+  }
+}
+
+class _GuessYouLikeSection extends StatelessWidget {
+  final _ShelfState? state;
+  const _GuessYouLikeSection({required this.state});
+
+  List<Track> get _tracks {
+    final row = state?.row;
+    if (row == null) return const [];
+    final source = <Track>[
+      ...row.tracks,
+      for (final item in row.items) ...?item.tracks,
+    ];
+    final seen = <String>{};
+    return source.where((track) => seen.add(track.key)).take(12).toList();
+  }
+
+  List<FeedItem> get _items =>
+      _ShelfSection._uniqueItems(state?.row.items ?? const []).take(12).toList();
+
+  @override
+  Widget build(BuildContext context) {
+    final loading = state?.loading ?? true;
+    final tracks = _tracks;
+    final items = _items;
+    if (!loading && tracks.isEmpty && items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final cardWidth =
+        (MediaQuery.sizeOf(context).width * 0.68).clamp(230.0, 310.0);
+    final cardHeight = cardWidth * 1.32;
+    final itemCount = tracks.isNotEmpty ? tracks.length : items.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('猜你喜欢',
+              style: TextStyle(
+                  color: MX.fg, fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('从熟悉的旋律，到下一首心动。',
+              style: TextStyle(color: MX.dim, fontSize: 13)),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: cardHeight,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: loading && itemCount == 0 ? 3 : itemCount,
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemBuilder: (context, index) {
+                if (loading && itemCount == 0) {
+                  return SkeletonBar(
+                      width: cardWidth, height: cardHeight, corner: 12);
+                }
+                if (tracks.isEmpty) {
+                  return _HomeCard(
+                    item: items[index],
+                    shelfId: 'guess',
+                    layout: 'hero',
+                    width: cardWidth,
+                  );
+                }
+                return _GuessTrackCard(
+                  track: tracks[index],
+                  queue: tracks,
+                  index: index,
+                  width: cardWidth,
+                  height: cardHeight,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuessTrackCard extends StatelessWidget {
+  final Track track;
+  final List<Track> queue;
+  final int index;
+  final double width;
+  final double height;
+
+  const _GuessTrackCard({
+    required this.track,
+    required this.queue,
+    required this.index,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.read<PlayerStore>().replaceQueue(queue, start: index),
+      onLongPress: () => showTrackActions(context, track),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CoverArt(src: track.cover, size: width, height: height, corner: 12),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0, 0.48, 1],
+                    colors: [Colors.black12, Colors.black26, Colors.black87],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('猜你喜欢 · ${MX.label(track.platform)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 5),
+                    Text(track.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Text(track.artistText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.82), fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
