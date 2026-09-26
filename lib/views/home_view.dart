@@ -321,8 +321,14 @@ class _GuessYouLikeSection extends StatelessWidget {
     return source.where((track) => seen.add(track.key)).take(12).toList();
   }
 
-  List<FeedItem> get _items =>
-      _ShelfSection._uniqueItems(state?.row.items ?? const []).take(12).toList();
+  List<FeedItem> get _items {
+    final row = state?.row;
+    if (row == null) return const [];
+    return _ShelfSection._uniqueItems([
+      ...row.items,
+      for (final section in row.sections) ...section.items,
+    ]).take(12).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -361,11 +367,10 @@ class _GuessYouLikeSection extends StatelessWidget {
                       width: cardWidth, height: cardHeight, corner: 12);
                 }
                 if (tracks.isEmpty) {
-                  return _HomeCard(
+                  return _GuessFeedCard(
                     item: items[index],
-                    shelfId: 'guess',
-                    layout: 'hero',
                     width: cardWidth,
+                    height: cardHeight,
                   );
                 }
                 return _GuessTrackCard(
@@ -424,13 +429,27 @@ class _GuessTrackCard extends StatelessWidget {
                   ),
                 ),
               ),
+              const Positioned(
+                top: 16,
+                left: 16,
+                child: _GuessBadge(),
+              ),
+              Positioned(
+                right: 18,
+                bottom: 18,
+                child: _GuessPlayButton(
+                  onPressed: () => context
+                      .read<PlayerStore>()
+                      .replaceQueue(queue, start: index),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.fromLTRB(18, 18, 82, 18),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('猜你喜欢 · ${MX.label(track.platform)}',
+                    Text(MX.label(track.platform),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -457,6 +476,145 @@ class _GuessTrackCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GuessFeedCard extends StatelessWidget {
+  final FeedItem item;
+  final double width;
+  final double height;
+
+  const _GuessFeedCard({
+    required this.item,
+    required this.width,
+    required this.height,
+  });
+
+  void _open(BuildContext context) {
+    context.read<UIStore>().open(homeRoute(item));
+  }
+
+  void _play(BuildContext context) {
+    final tracks = (item.tracks ?? const <Track>[])
+        .where((track) => track.title.isNotEmpty)
+        .toList();
+    if (tracks.isEmpty) {
+      _open(context);
+      return;
+    }
+    context.read<PlayerStore>().replaceQueue(tracks, start: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _open(context),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CoverArt(src: item.cover, size: width, height: height, corner: 12),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0, 0.48, 1],
+                    colors: [Colors.black12, Colors.black26, Colors.black87],
+                  ),
+                ),
+              ),
+              const Positioned(top: 16, left: 16, child: _GuessBadge()),
+              Positioned(
+                right: 18,
+                bottom: 18,
+                child: _GuessPlayButton(onPressed: () => _play(context)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 82, 18),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.source ?? MX.label(item.platform),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 5),
+                    Text(item.title ?? '专属推荐',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Text(MX.label(item.platform),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.82), fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuessBadge extends StatelessWidget {
+  const _GuessBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: MX.ember,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.play_arrow_rounded, size: 15, color: MX.onAccent),
+          const SizedBox(width: 4),
+          Text('猜你喜欢',
+              style: TextStyle(
+                  color: MX.onAccent, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuessPlayButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _GuessPlayButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: MX.ember,
+      shape: const CircleBorder(),
+      child: IconButton(
+        tooltip: '播放',
+        onPressed: onPressed,
+        icon: Icon(Icons.play_arrow_rounded, color: MX.onAccent, size: 31),
+        iconSize: 31,
+        padding: const EdgeInsets.all(12),
       ),
     );
   }
