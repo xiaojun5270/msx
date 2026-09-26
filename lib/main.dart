@@ -15,25 +15,19 @@ import 'stores/player_store.dart';
 import 'stores/session_store.dart';
 import 'stores/ui_store.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  assert(() {
-    debugPaintBaselinesEnabled = false;
-    WidgetsBinding.instance.addPersistentFrameCallback((_) {
-      if (!debugPaintBaselinesEnabled) return;
+class MusixWidgetsBinding extends WidgetsFlutterBinding {
+  @override
+  void drawFrame() {
+    assert(() {
       debugPaintBaselinesEnabled = false;
-      late RenderObjectVisitor repaint;
-      repaint = (renderObject) {
-        renderObject.markNeedsPaint();
-        renderObject.visitChildren(repaint);
-      };
-      for (final renderView in RendererBinding.instance.renderViews) {
-        renderView.visitChildren(repaint);
-      }
-      WidgetsBinding.instance.scheduleFrame();
-    });
-    return true;
-  }());
+      return true;
+    }());
+    super.drawFrame();
+  }
+}
+
+Future<void> main() async {
+  MusixWidgetsBinding();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Persistence must be ready before any store reads it.
