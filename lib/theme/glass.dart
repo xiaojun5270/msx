@@ -14,6 +14,7 @@ class AppBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final viewport = MediaQuery.sizeOf(context);
     final base = dark ? const Color(0xFF0B090D) : const Color(0xFFF1F4F7);
     // Neutral ink gradient only — no accent/teal tint. Keeping the accent out
     // of the shared backdrop stops the theme color from bleeding onto every
@@ -22,7 +23,7 @@ class AppBackdrop extends StatelessWidget {
     final top = dark ? const Color(0xFF141019) : const Color(0xFFFBFCFD);
     final bottom = dark ? const Color(0xFF08070A) : const Color(0xFFEDF1F4);
 
-    return Stack(
+    final background = Stack(
       fit: StackFit.expand,
       children: [
         DecoratedBox(
@@ -45,6 +46,24 @@ class AppBackdrop extends StatelessWidget {
             useOldImageOnUrlChange: true,
             errorWidget: (_, __, ___) => const SizedBox.shrink(),
           ),
+      ],
+    );
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.topCenter,
+              minWidth: viewport.width,
+              maxWidth: viewport.width,
+              minHeight: viewport.height,
+              maxHeight: viewport.height,
+              child: SizedBox.fromSize(size: viewport, child: background),
+            ),
+          ),
+        ),
         child,
       ],
     );
