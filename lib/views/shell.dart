@@ -119,11 +119,13 @@ class _MobileShellState extends State<MobileShell> {
     final ui = context.watch<UIStore>();
     final player = context.watch<PlayerStore>();
     final media = MediaQuery.of(context);
-    final safeBottom = media.padding.bottom > 8 ? media.padding.bottom : 8.0;
-    final navExtent = 74.0 + safeBottom;
+    final keyboardVisible = media.viewInsets.bottom > 0;
+    final safeBottom = media.padding.bottom;
+    final navExtent = 60.0 + safeBottom;
     final playerExtent =
         player.track == null ? 0.0 : (ui.playerExpanded ? 169.0 : 88.0);
-    final contentBottomInset = navExtent + playerExtent + 16;
+    final contentBottomInset =
+        keyboardVisible ? 0.0 : navExtent + playerExtent + 16;
     final bodyMedia = media.copyWith(
       padding: media.padding.copyWith(bottom: safeBottom),
     );
@@ -149,46 +151,51 @@ class _MobileShellState extends State<MobileShell> {
         if (didPop) return;
         _handleSystemBack();
       },
-      child: Material(
-        type: MaterialType.transparency,
-        child: Stack(
-          children: [
-            Scaffold(
-              backgroundColor: Colors.transparent,
-              extendBody: true,
-              body: Padding(
-                padding: EdgeInsets.only(bottom: contentBottomInset),
-                child: MediaQuery(
-                  data: bodyMedia,
-                  child: IndexedStack(
-                    index: _order.indexOf(_tab),
-                    children: [for (final t in _order) _tabNavigator(t)],
-                  ),
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            resizeToAvoidBottomInset: false,
+            body: Padding(
+              padding: EdgeInsets.only(bottom: contentBottomInset),
+              child: MediaQuery(
+                data: bodyMedia,
+                child: IndexedStack(
+                  index: _order.indexOf(_tab),
+                  children: [for (final t in _order) _tabNavigator(t)],
                 ),
               ),
             ),
+          ),
+          if (!keyboardVisible)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (player.track != null) const MiniPlayer(),
-                  _LiquidDock(
-                      current: _tab, order: _order, onSelect: _selectTab),
-                ],
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (player.track != null) const MiniPlayer(),
+                    _LiquidDock(
+                        current: _tab, order: _order, onSelect: _selectTab),
+                  ],
+                ),
               ),
             ),
-            if (ui.toast.isNotEmpty)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 12,
-                left: 0,
-                right: 0,
+          if (ui.toast.isNotEmpty)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 0,
+              right: 0,
+              child: Material(
+                type: MaterialType.transparency,
                 child: Center(child: _Toast(text: ui.toast)),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -265,7 +272,7 @@ class _LiquidDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset > 0 ? bottomInset : 8),
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: MediaQuery.removePadding(
         context: context,
         removeBottom: true,
@@ -280,11 +287,11 @@ class _LiquidDock extends StatelessWidget {
           ],
           currentIndex: order.indexOf(current),
           onTap: (index) => onSelect(order[index]),
-          height: 74,
+          height: 60,
           margin: const EdgeInsets.fromLTRB(8, 0, 8, 0),
           activeColor: ThemeAccent.current.color,
-          barBlurSigma: 20,
-          activeBlurSigma: 28,
+          barBlurSigma: 10,
+          activeBlurSigma: 18,
         ),
       ),
     );

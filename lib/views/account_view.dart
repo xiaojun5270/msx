@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -451,14 +450,8 @@ class _AccountViewState extends State<AccountView> {
     required Widget child,
     EdgeInsets padding = EdgeInsets.zero,
   }) =>
-      GlassSurface(
-        borderRadius: BorderRadius.circular(16),
-        blur: 26,
-        tint: const Color.fromRGBO(255, 255, 255, 0.12),
+      Padding(
         padding: padding,
-        showBorder: true,
-        showHighlight: false,
-        showShadow: true,
         child: SizedBox(width: double.infinity, child: child),
       );
 }

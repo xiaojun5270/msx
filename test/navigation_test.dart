@@ -70,4 +70,52 @@ void main() {
     expect(inheritedStyle?.decorationStyle, isNot(TextDecorationStyle.double));
     expect(inheritedStyle?.decorationColor, isNot(const Color(0xFFFFFF00)));
   });
+
+  testWidgets('keyboard inset keeps input visible and hides bottom chrome',
+      (tester) async {
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            final keyboardVisible =
+                MediaQuery.viewInsetsOf(context).bottom > 0;
+            return Stack(
+              children: [
+                Scaffold(
+                  resizeToAvoidBottomInset: false,
+                  body: Scaffold(
+                    body: TextField(
+                      key: const Key('keyboard-input'),
+                      decoration: const InputDecoration(hintText: 'Input'),
+                    ),
+                  ),
+                ),
+                if (!keyboardVisible)
+                  const Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Text('bottom overlay'),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('keyboard-input')));
+    await tester.showKeyboard(find.byKey(const Key('keyboard-input')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('keyboard-input')), findsOneWidget);
+    expect(find.text('bottom overlay'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
