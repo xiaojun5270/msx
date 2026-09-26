@@ -45,6 +45,7 @@ class _HomeViewState extends State<HomeView> {
 
   final Map<String, _ShelfState> _shelves = {};
   Playlist? _dailyMix;
+  List<Track> _favoriteTracks = [];
   int _generation = 0;
 
   @override
@@ -86,13 +87,33 @@ class _HomeViewState extends State<HomeView> {
         cacheKey: 'library.recent.mine', factory: PlaylistsPayload.fromJson);
     if (mounted && gen == _generation) {
       Playlist? mix;
+      Playlist? favorites;
       for (final p in box?.playlists ?? const <Playlist>[]) {
         if (p.kind == 'auto') {
           mix = p;
-          break;
+        } else if (p.kind == 'favorites') {
+          favorites = p;
         }
       }
       if (mix != null) setState(() => _dailyMix = mix);
+      if (favorites != null) {
+        final cacheKey = 'home.guess.favorites.${favorites.id}';
+        final cached = session.peekPage(cacheKey, PlaylistBox.fromJson);
+        if (cached?.playlist?.tracks case final List<Track> tracks) {
+          setState(() => _favoriteTracks =
+              tracks.where((track) => track.title.isNotEmpty).toList());
+        }
+        final favoriteBox = await session.fetchPage(
+          '/api/my/playlists/${Uri.encodeComponent(favorites.id)}',
+          cacheKey: cacheKey,
+          factory: PlaylistBox.fromJson,
+        );
+        if (mounted && gen == _generation && favoriteBox?.playlist != null) {
+          setState(() => _favoriteTracks = (favoriteBox!.playlist!.tracks ?? const [])
+              .where((track) => track.title.isNotEmpty)
+              .toList());
+        }
+      }
     }
     for (final (id, layout) in _kinds) {
       if (gen != _generation) return;
@@ -195,7 +216,9 @@ class _HomeViewState extends State<HomeView> {
     }
     return [
       _ShelfSection(state: st),
-      if (id == 'daily') _GuessYouLikeSection(state: _shelves['guess']),
+      if (id == 'daily')
+        _GuessYouLikeSection(
+            state: _shelves['guess'], favoriteTracks: _favoriteTracks),
       if (id == 'daily' && _dailyMix != null) _dailyMixEntry(_dailyMix!),
     ];
   }
@@ -308,40 +331,37 @@ class _HomeViewState extends State<HomeView> {
 
 class _GuessYouLikeSection extends StatelessWidget {
   final _ShelfState? state;
-  const _GuessYouLikeSection({required this.state});
+  final List<Track> favoriteTracks;
+  const _GuessYouLikeSection({
+    required this.state,
+    required this.favoriteTracks,
+  });
 
   List<Track> get _tracks {
     final row = state?.row;
-    if (row == null) return const [];
     final source = <Track>[
-      ...row.tracks,
-      for (final item in row.items) ...?item.tracks,
+      ...?row?.tracks,
+      for (final item in row?.items ?? const <FeedItem>[]) ...?item.tracks,
+      for (final section in row?.sections ?? const <HomeShelfSection>[])
+        for (final item in section.items) ...?item.tracks,
+      ...favoriteTracks,
     ];
     final seen = <String>{};
-    return source.where((track) => seen.add(track.key)).take(12).toList();
-  }
-
-  List<FeedItem> get _items {
-    final row = state?.row;
-    if (row == null) return const [];
-    return _ShelfSection._uniqueItems([
-      ...row.items,
-      for (final section in row.sections) ...section.items,
-    ]).take(12).toList();
+    return source
+        .where((track) => track.title.isNotEmpty && seen.add(track.key))
+        .take(80)
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final loading = state?.loading ?? true;
     final tracks = _tracks;
-    final items = _items;
-    if (!loading && tracks.isEmpty && items.isEmpty) {
+    if (!loading && tracks.isEmpty) {
       return const SizedBox.shrink();
     }
-    final cardWidth =
-        (MediaQuery.sizeOf(context).width * 0.68).clamp(230.0, 310.0);
-    final cardHeight = cardWidth * 1.32;
-    final itemCount = tracks.isNotEmpty ? tracks.length : items.length;
+    final cardHeight =
+        (MediaQuery.sizeOf(context).width * 0.94).clamp(300.0, 430.0);
 
     return Padding(
       padding: const EdgeInsets.only(top: 32),
@@ -355,179 +375,62 @@ class _GuessYouLikeSection extends StatelessWidget {
           Text('从熟悉的旋律，到下一首心动。',
               style: TextStyle(color: MX.dim, fontSize: 13)),
           const SizedBox(height: 14),
-          SizedBox(
-            height: cardHeight,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: loading && itemCount == 0 ? 3 : itemCount,
-              separatorBuilder: (_, __) => const SizedBox(width: 16),
-              itemBuilder: (context, index) {
-                if (loading && itemCount == 0) {
-                  return SkeletonBar(
-                      width: cardWidth, height: cardHeight, corner: 12);
-                }
-                if (tracks.isEmpty) {
-                  return _GuessFeedCard(
-                    item: items[index],
-                    width: cardWidth,
-                    height: cardHeight,
-                  );
-                }
-                return _GuessTrackCard(
-                  track: tracks[index],
-                  queue: tracks,
-                  index: index,
-                  width: cardWidth,
-                  height: cardHeight,
-                );
-              },
-            ),
-          ),
+          if (loading && tracks.isEmpty)
+            SkeletonBar(width: double.infinity, height: cardHeight, corner: 14)
+          else
+            _GuessPlaylistCard(tracks: tracks, height: cardHeight),
         ],
       ),
     );
   }
 }
 
-class _GuessTrackCard extends StatelessWidget {
-  final Track track;
-  final List<Track> queue;
-  final int index;
-  final double width;
+class _GuessPlaylistCard extends StatelessWidget {
+  final List<Track> tracks;
   final double height;
-
-  const _GuessTrackCard({
-    required this.track,
-    required this.queue,
-    required this.index,
-    required this.width,
+  const _GuessPlaylistCard({
+    required this.tracks,
     required this.height,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => context.read<PlayerStore>().replaceQueue(queue, start: index),
-      onLongPress: () => showTrackActions(context, track),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CoverArt(src: track.cover, size: width, height: height, corner: 12),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0, 0.48, 1],
-                    colors: [Colors.black12, Colors.black26, Colors.black87],
-                  ),
-                ),
-              ),
-              const Positioned(
-                top: 16,
-                left: 16,
-                child: _GuessBadge(),
-              ),
-              Positioned(
-                right: 18,
-                bottom: 18,
-                child: _GuessPlayButton(
-                  onPressed: () => context
-                      .read<PlayerStore>()
-                      .replaceQueue(queue, start: index),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 82, 18),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(MX.label(track.platform),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 5),
-                    Text(track.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Text(track.artistText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.82), fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GuessFeedCard extends StatelessWidget {
-  final FeedItem item;
-  final double width;
-  final double height;
-
-  const _GuessFeedCard({
-    required this.item,
-    required this.width,
-    required this.height,
-  });
-
-  void _open(BuildContext context) {
-    context.read<UIStore>().open(homeRoute(item));
-  }
 
   void _play(BuildContext context) {
-    final tracks = (item.tracks ?? const <Track>[])
-        .where((track) => track.title.isNotEmpty)
-        .toList();
-    if (tracks.isEmpty) {
-      _open(context);
-      return;
-    }
-    context.read<PlayerStore>().replaceQueue(tracks, start: 0);
+    if (tracks.isEmpty) return;
+    final player = context.read<PlayerStore>();
+    if (!player.shuffle) player.toggleShuffle();
+    final start = DateTime.now().microsecondsSinceEpoch % tracks.length;
+    player.replaceQueue(tracks, start: start);
   }
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => _open(context),
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _play(context),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: SizedBox(
-          width: width,
+          width: double.infinity,
           height: height,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CoverArt(src: item.cover, size: width, height: height, corner: 12),
+              CoverArt(
+                src: tracks.first.cover,
+                mosaic: tracks
+                    .map((track) => track.cover ?? '')
+                    .where((cover) => cover.isNotEmpty)
+                    .take(9)
+                    .toList(),
+                height: height,
+                corner: 14,
+              ),
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: [0, 0.48, 1],
-                    colors: [Colors.black12, Colors.black26, Colors.black87],
+                    stops: [0, 0.42, 1],
+                    colors: [Colors.black12, Colors.black38, Colors.black87],
                   ),
                 ),
               ),
@@ -543,27 +446,21 @@ class _GuessFeedCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.source ?? MX.label(item.platform),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 5),
-                    Text(item.title ?? '专属推荐',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    const Text('猜你喜欢',
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 21,
+                            fontSize: 23,
                             fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Text(MX.label(item.platform),
+                    const SizedBox(height: 6),
+                    Text('根据你的收藏与喜欢生成 · ${tracks.length} 首歌曲',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.82), fontSize: 13)),
+                    const SizedBox(height: 3),
+                    Text('全平台 · 随机播放',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.68), fontSize: 12)),
                   ],
                 ),
               ),
