@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musix/theme/route.dart';
 import 'package:musix/stores/ui_store.dart';
@@ -47,5 +47,27 @@ void main() {
 
     expect(find.text('next page'), findsOneWidget);
     expect(find.text('previous page'), findsNothing);
+  });
+
+  testWidgets('transparent Material clears the WidgetsApp error decoration',
+      (tester) async {
+    TextStyle? inheritedStyle;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Material(
+          type: MaterialType.transparency,
+          child: Builder(
+            builder: (context) {
+              inheritedStyle = DefaultTextStyle.of(context).style;
+              return const Text('overlay label');
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(inheritedStyle?.decoration, isNot(TextDecoration.underline));
+    expect(inheritedStyle?.decorationStyle, isNot(TextDecorationStyle.double));
+    expect(inheritedStyle?.decorationColor, isNot(const Color(0xFFFFFF00)));
   });
 }

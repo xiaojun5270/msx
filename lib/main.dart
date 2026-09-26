@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -15,19 +14,8 @@ import 'stores/player_store.dart';
 import 'stores/session_store.dart';
 import 'stores/ui_store.dart';
 
-class MusixWidgetsBinding extends WidgetsFlutterBinding {
-  @override
-  void drawFrame() {
-    assert(() {
-      debugPaintBaselinesEnabled = false;
-      return true;
-    }());
-    super.drawFrame();
-  }
-}
-
 Future<void> main() async {
-  MusixWidgetsBinding();
+  WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Persistence must be ready before any store reads it.

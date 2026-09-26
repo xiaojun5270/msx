@@ -149,43 +149,46 @@ class _MobileShellState extends State<MobileShell> {
         if (didPop) return;
         _handleSystemBack();
       },
-      child: Stack(
-        children: [
-          Scaffold(
-            backgroundColor: Colors.transparent,
-            extendBody: true,
-            body: Padding(
-              padding: EdgeInsets.only(bottom: contentBottomInset),
-              child: MediaQuery(
-                data: bodyMedia,
-                child: IndexedStack(
-                  index: _order.indexOf(_tab),
-                  children: [for (final t in _order) _tabNavigator(t)],
+      child: Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          children: [
+            Scaffold(
+              backgroundColor: Colors.transparent,
+              extendBody: true,
+              body: Padding(
+                padding: EdgeInsets.only(bottom: contentBottomInset),
+                child: MediaQuery(
+                  data: bodyMedia,
+                  child: IndexedStack(
+                    index: _order.indexOf(_tab),
+                    children: [for (final t in _order) _tabNavigator(t)],
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (player.track != null) const MiniPlayer(),
-                _LiquidDock(
-                    current: _tab, order: _order, onSelect: _selectTab),
-              ],
-            ),
-          ),
-          if (ui.toast.isNotEmpty)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
               left: 0,
               right: 0,
-              child: Center(child: _Toast(text: ui.toast)),
+              bottom: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (player.track != null) const MiniPlayer(),
+                  _LiquidDock(
+                      current: _tab, order: _order, onSelect: _selectTab),
+                ],
+              ),
             ),
-        ],
+            if (ui.toast.isNotEmpty)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 12,
+                left: 0,
+                right: 0,
+                child: Center(child: _Toast(text: ui.toast)),
+              ),
+          ],
+        ),
       ),
     );
   }
