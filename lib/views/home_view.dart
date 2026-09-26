@@ -45,7 +45,8 @@ class _HomeViewState extends State<HomeView> {
 
   final Map<String, _ShelfState> _shelves = {};
   Playlist? _dailyMix;
-  List<Track> _favoriteTracks = [];
+  List<Track> _preferenceTracks = [];
+  bool _preferenceTracksLoading = true;
   int _generation = 0;
 
   @override
@@ -56,7 +57,8 @@ class _HomeViewState extends State<HomeView> {
       final row = cached != null
           ? _rowFromRaw(id, layout, cached)
           : ShelfRow(id: id, layout: layout);
-      _shelves[id] = _ShelfState(row, loading: row.empty, loadedAt: cached != null ? DateTime.now() : null);
+      _shelves[id] = _ShelfState(row,
+          loading: row.empty, loadedAt: cached != null ? DateTime.now() : null);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
   }
@@ -74,7 +76,8 @@ class _HomeViewState extends State<HomeView> {
       title: data.title ?? '',
       more: data.more,
       items: data.items ?? const [],
-      tracks: (data.tracks ?? const []).where((t) => t.title.isNotEmpty).toList(),
+      tracks:
+          (data.tracks ?? const []).where((t) => t.title.isNotEmpty).toList(),
       sections: data.sections ?? const [],
     );
   }
@@ -82,12 +85,12 @@ class _HomeViewState extends State<HomeView> {
   Future<void> _loadAll() async {
     final gen = _generation;
     final session = context.read<SessionStore>();
-    // Resolve the behavior-driven daily mix (kind == 'auto').
+    // Resolve the behavior-driven daily mix and the local favorites playlist.
     final box = await session.fetchPage('/api/my/playlists',
         cacheKey: 'library.recent.mine', factory: PlaylistsPayload.fromJson);
+    Playlist? favorites;
     if (mounted && gen == _generation) {
       Playlist? mix;
-      Playlist? favorites;
       for (final p in box?.playlists ?? const <Playlist>[]) {
         if (p.kind == 'auto') {
           mix = p;
@@ -96,29 +99,150 @@ class _HomeViewState extends State<HomeView> {
         }
       }
       if (mix != null) setState(() => _dailyMix = mix);
-      if (favorites != null) {
-        final cacheKey = 'home.guess.favorites.${favorites.id}';
-        final cached = session.peekPage(cacheKey, PlaylistBox.fromJson);
-        if (cached?.playlist?.tracks case final List<Track> tracks) {
-          setState(() => _favoriteTracks =
-              tracks.where((track) => track.title.isNotEmpty).toList());
-        }
-        final favoriteBox = await session.fetchPage(
-          '/api/my/playlists/${Uri.encodeComponent(favorites.id)}',
-          cacheKey: cacheKey,
-          factory: PlaylistBox.fromJson,
-        );
-        if (mounted && gen == _generation && favoriteBox?.playlist != null) {
-          setState(() => _favoriteTracks = (favoriteBox!.playlist!.tracks ?? const [])
-              .where((track) => track.title.isNotEmpty)
-              .toList());
-        }
-      }
     }
+    final preferenceLoad = _loadPreferenceTracks(session, favorites, gen);
     for (final (id, layout) in _kinds) {
       if (gen != _generation) return;
       await _loadShelf(id, layout, gen);
     }
+    await preferenceLoad;
+  }
+
+  Future<void> _loadPreferenceTracks(
+      SessionStore session, Playlist? localFavorites, int gen) async {
+    final collected = <Track>[];
+
+    void addTracks(Iterable<Track> tracks) {
+      collected.addAll(tracks.where((track) => track.title.isNotEmpty));
+    }
+
+    void publish({bool loading = true}) {
+      if (!mounted || gen != _generation) return;
+      final seen = <String>{};
+      final merged = <Track>[
+        ...collected,
+        ..._preferenceTracks,
+      ].where((track) => seen.add(track.key)).take(200).toList();
+      setState(() {
+        _preferenceTracks = merged;
+        _preferenceTracksLoading = loading;
+      });
+    }
+
+    try {
+      if (localFavorites != null) {
+        addTracks(localFavorites.tracks ?? const <Track>[]);
+        final cacheKey = 'home.guess.favorites.v2.${localFavorites.id}';
+        final cached = session.peekPage(cacheKey, PlaylistBox.fromJson);
+        addTracks(cached?.playlist?.tracks ?? const <Track>[]);
+        publish();
+
+        final favoriteBox = await session.fetchPage(
+          '/api/my/playlists/${Uri.encodeComponent(localFavorites.id)}?limit=200',
+          cacheKey: cacheKey,
+          factory: PlaylistBox.fromJson,
+        );
+        addTracks(favoriteBox?.playlist?.tracks ?? const <Track>[]);
+        publish();
+      }
+
+      var libraries =
+          session.peekPage('library.browse.lib', LibraryPayload.fromJson);
+      final fetchedLibraries = await session.fetchPage(
+          '/api/me/libraries/playlists',
+          cacheKey: 'library.browse.lib',
+          factory: LibraryPayload.fromJson);
+      libraries = fetchedLibraries ?? libraries;
+
+      final preferencePlaylists = <String, (String, Playlist)>{};
+      for (final entry
+          in (libraries?.groups ?? const <String, List<Playlist>>{}).entries) {
+        for (final playlist in entry.value) {
+          if (!_isLikedPlaylist(playlist)) continue;
+          final platform = playlist.platform ?? entry.key;
+          preferencePlaylists['$platform::${playlist.id}'] =
+              (platform, playlist);
+          addTracks(playlist.tracks ?? const <Track>[]);
+        }
+      }
+
+      var savedPlaylists = session.peekPage('home.guess.savedPlaylists',
+          (data) => ItemsBox.fromJson(data, Playlist.fromJson));
+      final fetchedSavedPlaylists = await session.fetchPage(
+          '/api/my/favorites/items?kind=playlist',
+          cacheKey: 'home.guess.savedPlaylists',
+          factory: (data) => ItemsBox.fromJson(data, Playlist.fromJson));
+      savedPlaylists = fetchedSavedPlaylists ?? savedPlaylists;
+      for (final playlist in savedPlaylists?.items ?? const <Playlist>[]) {
+        final platform = playlist.platform ?? '';
+        if (platform.isEmpty || platform == 'local') continue;
+        preferencePlaylists['$platform::${playlist.id}'] = (platform, playlist);
+        addTracks(playlist.tracks ?? const <Track>[]);
+      }
+      publish();
+
+      final details =
+          await Future.wait(preferencePlaylists.values.take(8).map((entry) {
+        final platform = entry.$1;
+        final playlist = entry.$2;
+        final id = Uri.encodeComponent(playlist.id);
+        return session.fetchPage(
+          '/api/playlists/$platform/$id?limit=200',
+          cacheKey: 'home.guess.liked.$platform.${playlist.id}',
+          factory: Playlist.fromJson,
+        );
+      }));
+      for (final playlist in details) {
+        addTracks(playlist?.tracks ?? const <Track>[]);
+      }
+    } finally {
+      publish(loading: false);
+    }
+  }
+
+  bool _isLikedPlaylist(Playlist playlist) {
+    final kind =
+        '${playlist.kind ?? ''} ${playlist.listKind ?? ''}'.toLowerCase();
+    if (playlist.id.toLowerCase() == 'liked' ||
+        kind.contains('liked') ||
+        kind.contains('favorite')) {
+      return true;
+    }
+    final title =
+        '${playlist.name ?? ''} ${playlist.title ?? ''}'.toLowerCase();
+    return title.contains('我喜欢') ||
+        title.contains('喜欢的') ||
+        title.contains('收藏的歌曲') ||
+        title.contains('红心') ||
+        title.contains('liked songs') ||
+        title.contains('favorites');
+  }
+
+  Iterable<Track> _tracksIn(_ShelfState? state) sync* {
+    final row = state?.row;
+    if (row == null) return;
+    yield* row.tracks;
+    for (final item in row.items) {
+      yield* item.tracks ?? const <Track>[];
+    }
+    for (final section in row.sections) {
+      for (final item in section.items) {
+        yield* item.tracks ?? const <Track>[];
+      }
+    }
+  }
+
+  List<Track> get _guessTracks {
+    final seen = <String>{};
+    return <Track>[
+      ..._tracksIn(_shelves['guess']),
+      ..._preferenceTracks,
+      ..._tracksIn(_shelves['taste']),
+      ..._tracksIn(_shelves['daily']),
+    ]
+        .where((track) => track.title.isNotEmpty && seen.add(track.key))
+        .take(200)
+        .toList();
   }
 
   Future<void> _loadShelf(String id, String layout, int gen) async {
@@ -131,13 +255,19 @@ class _HomeViewState extends State<HomeView> {
     try {
       // Retry loop for server-side "refreshing" responses.
       for (var attempt = 0; attempt < 4; attempt++) {
-        final raw = await session.api.getRawBody('/api/home/$id');
+        final path =
+            id == 'guess' ? '/api/home/$id?limit=200' : '/api/home/$id';
+        final raw = await session.api.getRawBody(path);
         if (!mounted || gen != _generation) return;
         final data = APIClient.decodeCached(raw, HomeShelf.fromJson);
-        final row = _rowFromShelf(id, layout, data) ?? ShelfRow(id: id, layout: layout);
+        final row =
+            _rowFromShelf(id, layout, data) ?? ShelfRow(id: id, layout: layout);
         if (data?.refreshing == true) {
-          if (!row.empty) setState(() => _shelves[id] = _ShelfState(row, loading: true, loadedAt: null));
-          final delayMs = (data?.retryAfterMs ?? 1000).clamp(300, 12000).toInt();
+          if (!row.empty)
+            setState(() =>
+                _shelves[id] = _ShelfState(row, loading: true, loadedAt: null));
+          final delayMs =
+              (data?.retryAfterMs ?? 1000).clamp(300, 12000).toInt();
           if (attempt >= 3 || delayMs >= 12000) {
             setState(() {
               _shelves[id]!.loading = false;
@@ -148,7 +278,8 @@ class _HomeViewState extends State<HomeView> {
           await Future.delayed(Duration(milliseconds: delayMs));
           continue;
         }
-        setState(() => _shelves[id] = _ShelfState(row, loading: false, loadedAt: DateTime.now()));
+        setState(() => _shelves[id] =
+            _ShelfState(row, loading: false, loadedAt: DateTime.now()));
         session.local.saveHomeRaw(id, raw);
         return;
       }
@@ -164,6 +295,7 @@ class _HomeViewState extends State<HomeView> {
   Future<void> _refresh() async {
     setState(() {
       _generation++;
+      _preferenceTracksLoading = true;
       for (final st in _shelves.values) {
         st.loadedAt = null;
         st.failed = false;
@@ -194,7 +326,10 @@ class _HomeViewState extends State<HomeView> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8, bottom: 8),
                     child: Text('主页',
-                        style: TextStyle(color: MX.fg, fontSize: 32, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: MX.fg,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold)),
                   ),
                   if (_noBindings) _bindHint(),
                   if (_anyFailed) _refreshNotice(),
@@ -215,10 +350,12 @@ class _HomeViewState extends State<HomeView> {
       return [_RecentShelf(generation: _generation)];
     }
     return [
-      _ShelfSection(state: st),
-      if (id == 'daily')
-        _GuessYouLikeSection(
-            state: _shelves['guess'], favoriteTracks: _favoriteTracks),
+      _ShelfSection(
+        state: st,
+        guessTracks: id == 'daily' ? _guessTracks : const [],
+        guessLoading: id == 'daily' &&
+            ((_shelves['guess']?.loading ?? true) || _preferenceTracksLoading),
+      ),
       if (id == 'daily' && _dailyMix != null) _dailyMixEntry(_dailyMix!),
     ];
   }
@@ -228,8 +365,11 @@ class _HomeViewState extends State<HomeView> {
       padding: const EdgeInsets.only(top: 20),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.read<UIStore>().open(
-            PlaylistRoute(platform: 'local', id: mix.id, kind: ListKind.mine, fromLibrary: false)),
+        onTap: () => context.read<UIStore>().open(PlaylistRoute(
+            platform: 'local',
+            id: mix.id,
+            kind: ListKind.mine,
+            fromLibrary: false)),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -252,14 +392,23 @@ class _HomeViewState extends State<HomeView> {
                           child: Text(mix.name ?? '每日私享',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
+                              style: TextStyle(
+                                  color: MX.fg,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600)),
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(color: MX.ember, borderRadius: BorderRadius.circular(999)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                              color: MX.ember,
+                              borderRadius: BorderRadius.circular(999)),
                           child: Text('为你',
-                              style: TextStyle(color: MX.onAccent, fontSize: 10, fontWeight: FontWeight.w600)),
+                              style: TextStyle(
+                                  color: MX.onAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ),
@@ -282,7 +431,8 @@ class _HomeViewState extends State<HomeView> {
       padding: const EdgeInsets.only(bottom: 20),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: MX.fillSoft, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+            color: MX.fillSoft, borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
             Icon(Icons.person_add_alt, color: MX.dim, size: 26),
@@ -293,7 +443,10 @@ class _HomeViewState extends State<HomeView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('让推荐更懂你',
-                      style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 3),
                   Text('绑定音乐平台，发现专属歌单和每日推荐。',
                       style: TextStyle(color: MX.dim, fontSize: 13)),
@@ -302,7 +455,8 @@ class _HomeViewState extends State<HomeView> {
             ),
             const SizedBox(width: 8),
             OutlinedButton(
-              onPressed: () => context.read<UIStore>().open(SimpleRoute.settings),
+              onPressed: () =>
+                  context.read<UIStore>().open(SimpleRoute.settings),
               child: const Text('去设置'),
             ),
           ],
@@ -329,67 +483,13 @@ class _HomeViewState extends State<HomeView> {
   }
 }
 
-class _GuessYouLikeSection extends StatelessWidget {
-  final _ShelfState? state;
-  final List<Track> favoriteTracks;
-  const _GuessYouLikeSection({
-    required this.state,
-    required this.favoriteTracks,
-  });
-
-  List<Track> get _tracks {
-    final row = state?.row;
-    final source = <Track>[
-      ...?row?.tracks,
-      for (final item in row?.items ?? const <FeedItem>[]) ...?item.tracks,
-      for (final section in row?.sections ?? const <HomeShelfSection>[])
-        for (final item in section.items) ...?item.tracks,
-      ...favoriteTracks,
-    ];
-    final seen = <String>{};
-    return source
-        .where((track) => track.title.isNotEmpty && seen.add(track.key))
-        .take(80)
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final loading = state?.loading ?? true;
-    final tracks = _tracks;
-    if (!loading && tracks.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final cardHeight =
-        (MediaQuery.sizeOf(context).width * 0.94).clamp(300.0, 430.0);
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('猜你喜欢',
-              style: TextStyle(
-                  color: MX.fg, fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('从熟悉的旋律，到下一首心动。',
-              style: TextStyle(color: MX.dim, fontSize: 13)),
-          const SizedBox(height: 14),
-          if (loading && tracks.isEmpty)
-            SkeletonBar(width: double.infinity, height: cardHeight, corner: 14)
-          else
-            _GuessPlaylistCard(tracks: tracks, height: cardHeight),
-        ],
-      ),
-    );
-  }
-}
-
 class _GuessPlaylistCard extends StatelessWidget {
   final List<Track> tracks;
+  final double width;
   final double height;
   const _GuessPlaylistCard({
     required this.tracks,
+    required this.width,
     required this.height,
   });
 
@@ -409,7 +509,7 @@ class _GuessPlaylistCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: SizedBox(
-          width: double.infinity,
+          width: width,
           height: height,
           child: Stack(
             fit: StackFit.expand,
@@ -421,6 +521,7 @@ class _GuessPlaylistCard extends StatelessWidget {
                     .where((cover) => cover.isNotEmpty)
                     .take(9)
                     .toList(),
+                size: width,
                 height: height,
                 corner: 14,
               ),
@@ -447,20 +548,22 @@ class _GuessPlaylistCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('猜你喜欢',
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: Colors.white,
-                            fontSize: 23,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
                     Text('根据你的收藏与喜欢生成 · ${tracks.length} 首歌曲',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.82), fontSize: 13)),
+                            color: Colors.white.withOpacity(0.82),
+                            fontSize: 13)),
                     const SizedBox(height: 3),
                     Text('全平台 · 随机播放',
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.68), fontSize: 12)),
+                            color: Colors.white.withOpacity(0.68),
+                            fontSize: 12)),
                   ],
                 ),
               ),
@@ -490,7 +593,9 @@ class _GuessBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text('猜你喜欢',
               style: TextStyle(
-                  color: MX.onAccent, fontSize: 12, fontWeight: FontWeight.w600)),
+                  color: MX.onAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -521,23 +626,42 @@ class _GuessPlayButton extends StatelessWidget {
 AppRoute homeRoute(FeedItem item) {
   final platform = item.platform ?? '';
   if (item.type == 'chart' && (item.chartId ?? '').isNotEmpty) {
-    return PlaylistRoute(platform: platform, id: item.chartId!, kind: ListKind.chart, fromLibrary: false);
+    return PlaylistRoute(
+        platform: platform,
+        id: item.chartId!,
+        kind: ListKind.chart,
+        fromLibrary: false);
   }
   if (item.type == 'album') return AlbumRoute(platform: platform, id: item.id);
-  if (item.type == 'artist') return ArtistRoute(platform: platform, id: item.id);
-  return PlaylistRoute(platform: platform, id: item.id, kind: ListKind.platform, fromLibrary: false);
+  if (item.type == 'artist')
+    return ArtistRoute(platform: platform, id: item.id);
+  return PlaylistRoute(
+      platform: platform,
+      id: item.id,
+      kind: ListKind.platform,
+      fromLibrary: false);
 }
 
 /// One home shelf. Mirrors Swift `ShelfSection`.
 class _ShelfSection extends StatelessWidget {
   final _ShelfState state;
-  const _ShelfSection({required this.state});
+  final List<Track> guessTracks;
+  final bool guessLoading;
+  const _ShelfSection({
+    required this.state,
+    this.guessTracks = const [],
+    this.guessLoading = false,
+  });
 
   ShelfRow get row => state.row;
+  bool get _hasGuessCard =>
+      row.id == 'daily' && (guessTracks.isNotEmpty || guessLoading);
 
   @override
   Widget build(BuildContext context) {
-    if (!state.loading && row.empty) return const SizedBox.shrink();
+    if (!state.loading && row.empty && !_hasGuessCard) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.only(top: 32),
       child: Column(
@@ -551,10 +675,14 @@ class _ShelfSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(row.displayTitle,
-                        style: TextStyle(color: MX.fg, fontSize: 20, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: MX.fg,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold)),
                     if (row.subtitle.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(row.subtitle, style: TextStyle(color: MX.dim, fontSize: 13)),
+                      Text(row.subtitle,
+                          style: TextStyle(color: MX.dim, fontSize: 13)),
                     ],
                   ],
                 ),
@@ -562,7 +690,7 @@ class _ShelfSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          if (state.loading && row.empty)
+          if (state.loading && row.empty && !_hasGuessCard)
             _skeleton()
           else if (row.layout == 'tracks')
             _songShelf(context)
@@ -586,7 +714,10 @@ class _ShelfSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SkeletonBar(width: hero ? 220 : 150, height: hero ? 260 : 150, corner: 12),
+              SkeletonBar(
+                  width: hero ? 220 : 150,
+                  height: hero ? 260 : 150,
+                  corner: 12),
               const SizedBox(height: 8),
               const SkeletonBar(width: 110, height: 13),
             ],
@@ -612,16 +743,34 @@ class _ShelfSection extends StatelessWidget {
 
   Widget _rail(BuildContext context) {
     final items = _uniqueItems(row.items);
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (items.isEmpty && !_hasGuessCard) return const SizedBox.shrink();
     final hero = row.layout == 'hero';
-    final width = hero ? 260.0 : row.layout == 'artists' ? 150.0 : 160.0;
+    final width = hero
+        ? 260.0
+        : row.layout == 'artists'
+            ? 150.0
+            : 160.0;
+    final height = hero ? width * 1.32 : width + 78;
     return SizedBox(
-      height: hero ? width * 1.32 + 4 : width + 78,
+      height: height + (hero ? 4 : 0),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: items.length,
+        itemCount: items.length + (_hasGuessCard ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(width: 16),
-        itemBuilder: (_, i) => _HomeCard(item: items[i], shelfId: row.id, layout: row.layout, width: width),
+        itemBuilder: (_, i) {
+          if (i < items.length) {
+            return _HomeCard(
+                item: items[i],
+                shelfId: row.id,
+                layout: row.layout,
+                width: width);
+          }
+          if (guessTracks.isEmpty) {
+            return SkeletonBar(width: width, height: height, corner: 12);
+          }
+          return _GuessPlaylistCard(
+              tracks: guessTracks, width: width, height: height);
+        },
       ),
     );
   }
@@ -643,10 +792,17 @@ class _HomeCard extends StatelessWidget {
   final String shelfId;
   final String layout;
   final double width;
-  const _HomeCard({required this.item, required this.shelfId, required this.layout, required this.width});
+  const _HomeCard(
+      {required this.item,
+      required this.shelfId,
+      required this.layout,
+      required this.width});
 
   String get _subtitle {
-    final artists = {for (final t in item.tracks ?? const <Track>[]) ...t.artists}.toList()..sort();
+    final artists = {
+      for (final t in item.tracks ?? const <Track>[]) ...t.artists
+    }.toList()
+      ..sort();
     if (artists.isNotEmpty) return artists.take(3).join('、');
     if ((item.source ?? '').isNotEmpty) return item.source!;
     return MX.label(item.platform);
@@ -677,15 +833,21 @@ class _HomeCard extends StatelessWidget {
       child: SizedBox(
         width: width,
         child: Column(
-          crossAxisAlignment: artists ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              artists ? CrossAxisAlignment.center : CrossAxisAlignment.start,
           children: [
-            CoverArt(src: item.cover, size: width, corner: artists ? width / 2 : 9, circle: artists),
+            CoverArt(
+                src: item.cover,
+                size: width,
+                corner: artists ? width / 2 : 9,
+                circle: artists),
             const SizedBox(height: 8),
             Text(item.title ?? '未命名推荐',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: artists ? TextAlign.center : TextAlign.start,
-                style: TextStyle(color: MX.fg, fontSize: 14, fontWeight: FontWeight.w500)),
+                style: TextStyle(
+                    color: MX.fg, fontSize: 14, fontWeight: FontWeight.w500)),
             const SizedBox(height: 2),
             Text(artists ? '艺人 · ${MX.label(item.platform)}' : _subtitle,
                 maxLines: 2,
@@ -716,7 +878,11 @@ class _HomeCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black26, Colors.black87],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black26,
+                      Colors.black87
+                    ],
                   ),
                 ),
               ),
@@ -727,17 +893,25 @@ class _HomeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(_kindLabel,
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w600)),
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(item.title ?? '专属精选',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text(_subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.white.withOpacity(0.84), fontSize: 12)),
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.84),
+                            fontSize: 12)),
                   ],
                 ),
               ),
@@ -761,7 +935,8 @@ class _HomeSongShelf extends StatelessWidget {
     for (var i = 0; i < preview.length; i += 3) {
       groups.add(preview.sublist(i, (i + 3).clamp(0, preview.length)));
     }
-    final colWidth = (MediaQuery.of(context).size.width - 40).clamp(250.0, 360.0);
+    final colWidth =
+        (MediaQuery.of(context).size.width - 40).clamp(250.0, 360.0);
     return SizedBox(
       height: 3 * 68.0,
       child: ListView.separated(
@@ -810,7 +985,10 @@ class _HomeSongRow extends StatelessWidget {
                   Text(track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: MX.fg, fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500)),
                   const SizedBox(height: 3),
                   Text(track.artistText,
                       maxLines: 1,
@@ -858,15 +1036,23 @@ class _RecentShelfState extends State<_RecentShelf> {
     final session = context.read<SessionStore>();
     final cached = session.peekPage('recents.track', HistoryPayload.fromJson);
     if (cached != null && _tracks.isEmpty) {
-      _tracks = (cached.items ?? const []).take(12).map((t) => t..historyReplay = true).toList();
+      _tracks = (cached.items ?? const [])
+          .take(12)
+          .map((t) => t..historyReplay = true)
+          .toList();
     }
     if (mounted) setState(() => _loading = _tracks.isEmpty);
-    final result = await session.fetchPage('/api/me/history?kind=track&limit=80',
-        cacheKey: 'recents.track', factory: HistoryPayload.fromJson);
+    final result = await session.fetchPage(
+        '/api/me/history?kind=track&limit=80',
+        cacheKey: 'recents.track',
+        factory: HistoryPayload.fromJson);
     if (!mounted) return;
     setState(() {
       if (result != null) {
-        _tracks = (result.items ?? const []).take(12).map((t) => t..historyReplay = true).toList();
+        _tracks = (result.items ?? const [])
+            .take(12)
+            .map((t) => t..historyReplay = true)
+            .toList();
       }
       _loading = false;
     });
@@ -885,11 +1071,13 @@ class _RecentShelfState extends State<_RecentShelf> {
           Row(
             children: [
               Text('最近播放',
-                  style: TextStyle(color: MX.fg, fontSize: 17, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: MX.fg, fontSize: 17, fontWeight: FontWeight.w600)),
               const Spacer(),
               IconButton(
                 icon: Icon(Icons.chevron_right, color: MX.dim),
-                onPressed: () => context.read<UIStore>().open(const SimpleRoute('recents')),
+                onPressed: () =>
+                    context.read<UIStore>().open(const SimpleRoute('recents')),
               ),
             ],
           ),
@@ -898,11 +1086,14 @@ class _RecentShelfState extends State<_RecentShelf> {
             height: tile + 52,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: _loading && _tracks.isEmpty ? 4 : _tracks.take(6).length,
+              itemCount:
+                  _loading && _tracks.isEmpty ? 4 : _tracks.take(6).length,
               separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (_, i) {
                 if (_loading && _tracks.isEmpty) {
-                  return const SizedBox(width: tile, child: SkeletonBar(width: tile, height: tile, corner: 8));
+                  return const SizedBox(
+                      width: tile,
+                      child: SkeletonBar(width: tile, height: tile, corner: 8));
                 }
                 final track = _tracks[i];
                 return InkWell(
@@ -917,7 +1108,10 @@ class _RecentShelfState extends State<_RecentShelf> {
                         Text(track.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: MX.fg, fontSize: 12, fontWeight: FontWeight.w500)),
+                            style: TextStyle(
+                                color: MX.fg,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500)),
                         Text(track.artistText,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -955,7 +1149,8 @@ class ShelfRow {
     this.sections = const [],
   });
 
-  bool get empty => items.isEmpty && tracks.isEmpty && sections.every((s) => s.items.isEmpty);
+  bool get empty =>
+      items.isEmpty && tracks.isEmpty && sections.every((s) => s.items.isEmpty);
 
   String get displayTitle {
     if (id == 'daily') return '专属精选推荐';
