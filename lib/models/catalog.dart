@@ -129,6 +129,7 @@ class Playlist {
   String? createdAt;
   String? updatedAt;
   String? addedAt;
+  String? nextCursor;
 
   Playlist({
     required this.id,
@@ -150,6 +151,7 @@ class Playlist {
     this.createdAt,
     this.updatedAt,
     this.addedAt,
+    this.nextCursor,
   });
 
   String get displayTitle => title ?? name ?? '歌单';
@@ -189,6 +191,7 @@ class Playlist {
         createdAt: asString(c['createdAt']),
         updatedAt: asString(c['updatedAt']),
         addedAt: asString(c['addedAt']),
+        nextCursor: flexIdOrNull(c['nextCursor']),
       );
 }
 

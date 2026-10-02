@@ -149,6 +149,62 @@ class SessionStore extends ChangeNotifier {
   T? peekPage<T>(String key, T Function(Map<String, dynamic>) factory) =>
       local.decodePage(key, factory);
 
+  Future<Playlist?> fetchFullPlatformPlaylist(
+    String platform,
+    String id, {
+    required String cacheKey,
+    bool refresh = false,
+  }) async {
+    const pageSize = 80;
+    final encodedPlatform = Uri.encodeComponent(platform);
+    final encodedId = Uri.encodeComponent(id);
+    final firstQuery = <String>[
+      'limit=$pageSize',
+      if (refresh) 'refresh=true',
+    ].join('&');
+    final playlist = await fetchPage(
+      '/api/playlists/$encodedPlatform/$encodedId?$firstQuery',
+      cacheKey: cacheKey,
+      factory: Playlist.fromJson,
+    );
+    if (playlist == null) return null;
+
+    final tracks = <Track>[];
+    final trackKeys = <String>{};
+    void append(Iterable<Track> pageTracks) {
+      for (final track in pageTracks) {
+        if (track.title.isNotEmpty && trackKeys.add(track.key)) {
+          tracks.add(track);
+        }
+      }
+    }
+
+    append(playlist.tracks ?? const <Track>[]);
+    final visitedCursors = <String>{};
+    var cursor = playlist.nextCursor;
+    var pageIndex = 1;
+    while (cursor != null && cursor.isNotEmpty && visitedCursors.add(cursor)) {
+      final page = await fetchPage(
+        '/api/playlists/$encodedPlatform/$encodedId?cursor=${Uri.encodeComponent(cursor)}&limit=$pageSize',
+        cacheKey: '$cacheKey.page.$pageIndex',
+        factory: Playlist.fromJson,
+      );
+      if (page == null) break;
+      final previousCount = tracks.length;
+      append(page.tracks ?? const <Track>[]);
+      if (tracks.length == previousCount) break;
+      cursor = page.nextCursor;
+      pageIndex += 1;
+    }
+
+    playlist.tracks = tracks;
+    if ((playlist.trackCount ?? 0) < tracks.length) {
+      playlist.trackCount = tracks.length;
+    }
+    playlist.nextCursor = cursor;
+    return playlist;
+  }
+
   void _handleSessionTokenChange(String token) {
     if (AuthBox.shared.snapshot().token != token) return;
     if (local.prefs.sessionToken == token) return;

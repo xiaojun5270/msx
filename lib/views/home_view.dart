@@ -100,12 +100,15 @@ class _HomeViewState extends State<HomeView> {
       }
       if (mix != null) setState(() => _dailyMix = mix);
     }
-    final preferenceLoad = _loadPreferenceTracks(session, favorites, gen);
     for (final (id, layout) in _kinds) {
       if (gen != _generation) return;
       await _loadShelf(id, layout, gen);
     }
-    await preferenceLoad;
+    if (_tracksIn(_shelves['guess']).isEmpty) {
+      await _loadPreferenceTracks(session, favorites, gen);
+    } else if (mounted && gen == _generation) {
+      setState(() => _preferenceTracksLoading = false);
+    }
   }
 
   Future<void> _loadPreferenceTracks(
@@ -122,7 +125,7 @@ class _HomeViewState extends State<HomeView> {
       final merged = <Track>[
         ...collected,
         ..._preferenceTracks,
-      ].where((track) => seen.add(track.key)).take(200).toList();
+      ].where((track) => seen.add(track.key)).toList();
       setState(() {
         _preferenceTracks = merged;
         _preferenceTracksLoading = loading;
@@ -138,7 +141,7 @@ class _HomeViewState extends State<HomeView> {
         publish();
 
         final favoriteBox = await session.fetchPage(
-          '/api/my/playlists/${Uri.encodeComponent(localFavorites.id)}?limit=200',
+          '/api/my/playlists/${Uri.encodeComponent(localFavorites.id)}',
           cacheKey: cacheKey,
           factory: PlaylistBox.fromJson,
         );
@@ -185,11 +188,10 @@ class _HomeViewState extends State<HomeView> {
           await Future.wait(preferencePlaylists.values.take(8).map((entry) {
         final platform = entry.$1;
         final playlist = entry.$2;
-        final id = Uri.encodeComponent(playlist.id);
-        return session.fetchPage(
-          '/api/playlists/$platform/$id?limit=200',
+        return session.fetchFullPlatformPlaylist(
+          platform,
+          playlist.id,
           cacheKey: 'home.guess.liked.$platform.${playlist.id}',
-          factory: Playlist.fromJson,
         );
       }));
       for (final playlist in details) {
@@ -235,17 +237,21 @@ class _HomeViewState extends State<HomeView> {
   List<Track> get _guessTracks {
     final seen = <String>{};
     return <Track>[
-      ..._tracksIn(_shelves['guess']),
-      ..._preferenceTracks,
-      ..._tracksIn(_shelves['taste']),
-      ..._tracksIn(_shelves['daily']),
-    ]
-        .where((track) => track.title.isNotEmpty && seen.add(track.key))
-        .take(200)
-        .toList();
+      if (_tracksIn(_shelves['guess']).isNotEmpty)
+        ..._tracksIn(_shelves['guess'])
+      else ...[
+        ..._preferenceTracks,
+        ..._tracksIn(_shelves['taste']),
+        ..._tracksIn(_shelves['daily']),
+      ],
+    ].where((track) => track.title.isNotEmpty && seen.add(track.key)).toList();
   }
 
   Future<void> _loadShelf(String id, String layout, int gen) async {
+    if (id == 'guess') {
+      await _loadGuessShelf(layout, gen);
+      return;
+    }
     final st = _shelves[id];
     if (st != null && st.loadedAt != null && !st.failed) {
       final fresh = DateTime.now().difference(st.loadedAt!).inSeconds < 45;
@@ -255,9 +261,7 @@ class _HomeViewState extends State<HomeView> {
     try {
       // Retry loop for server-side "refreshing" responses.
       for (var attempt = 0; attempt < 4; attempt++) {
-        final path =
-            id == 'guess' ? '/api/home/$id?limit=200' : '/api/home/$id';
-        final raw = await session.api.getRawBody(path);
+        final raw = await session.api.getRawBody('/api/home/$id');
         if (!mounted || gen != _generation) return;
         final data = APIClient.decodeCached(raw, HomeShelf.fromJson);
         final row =
@@ -290,6 +294,69 @@ class _HomeViewState extends State<HomeView> {
         _shelves[id]?.failed = true;
       });
     }
+  }
+
+  Future<void> _loadGuessShelf(String layout, int gen) async {
+    const pageSize = 100;
+    final session = context.read<SessionStore>();
+    final tracks = <Track>[];
+    final trackKeys = <String>{};
+    final visitedOffsets = <int>{};
+    var offset = 0;
+    var loadedPage = false;
+    var failed = false;
+
+    while (visitedOffsets.add(offset)) {
+      final query =
+          offset == 0 ? 'limit=$pageSize' : 'limit=$pageSize&offset=$offset';
+      final page = await session.fetchPage(
+        '/api/guess-you-like?$query',
+        cacheKey: 'home.guess.page.$offset',
+        factory: GuessYouLikePage.fromJson,
+      );
+      if (!mounted || gen != _generation) return;
+      if (page == null) {
+        failed = true;
+        break;
+      }
+
+      loadedPage = true;
+      final previousCount = tracks.length;
+      for (final track in page.tracks) {
+        if (track.title.isNotEmpty && trackKeys.add(track.key)) {
+          tracks.add(track);
+        }
+      }
+      final nextOffset = page.nextOffset ?? offset + page.tracks.length;
+      final hasNextPage = page.hasMore &&
+          page.tracks.isNotEmpty &&
+          tracks.length > previousCount &&
+          nextOffset > offset;
+
+      setState(() {
+        _shelves['guess'] = _ShelfState(
+          ShelfRow(id: 'guess', layout: layout, tracks: List.of(tracks)),
+          loading: hasNextPage,
+          loadedAt: hasNextPage ? null : DateTime.now(),
+        );
+      });
+      if (!hasNextPage) break;
+      offset = nextOffset;
+    }
+
+    if (!mounted || gen != _generation) return;
+    if (!loadedPage) {
+      setState(() {
+        _shelves['guess']?.loading = false;
+        _shelves['guess']?.failed = true;
+      });
+      return;
+    }
+    setState(() {
+      _shelves['guess']?.loading = false;
+      _shelves['guess']?.failed = failed;
+      _shelves['guess']?.loadedAt = DateTime.now();
+    });
   }
 
   Future<void> _refresh() async {

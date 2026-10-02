@@ -91,6 +91,7 @@ class PlayerStore extends ChangeNotifier {
   List<int> _shuffleSeq = [];
   String? _recordingCorrespondence;
   bool _recovering = false;
+  final Set<String> _failedPlaybackKeys = {};
   String? _loadedTrackKey;
   Uri? _loadedURL;
   Map<String, String> _loadedHeaders = const {};
@@ -133,16 +134,20 @@ class PlayerStore extends ChangeNotifier {
       },
     );
     if (!_recovering && index >= 0 && index < queue.length) {
-      await _playAt(index, position: current, autoplay: true, recover: true);
+      await _playAt(index,
+          position: current,
+          autoplay: true,
+          recover: true,
+          automaticFailureAdvance: _failedPlaybackKeys.isNotEmpty);
       return;
     }
-    loading = false;
-    _setWantsPlayback(false);
-    playing = false;
-    final message = _describeError(error);
-    _setSourceProgress(PlaybackSourcePhase.failed, detail: message);
-    _ui?.notify(message);
-    notifyListeners();
+    final failedIndex = index;
+    await _av.stop();
+    _loadedTrackKey = null;
+    _loadedURL = null;
+    if (generation != _token) return;
+    await _finishPlaybackFailure(
+        failedIndex, _describeError(error), true);
   }
 
   // ---------------------------------------------------------------------------
@@ -208,6 +213,7 @@ class PlayerStore extends ChangeNotifier {
     _loadedHeaders = const {};
     _recordingCorrespondence = null;
     _recovering = false;
+    _failedPlaybackKeys.clear();
     sourceProgress = PlaybackSourceProgress(phase: PlaybackSourcePhase.idle);
     _session?.local.clearPlayer();
     _publishNowPlaying();
@@ -269,6 +275,7 @@ class PlayerStore extends ChangeNotifier {
   void _syncPlaybackState() {
     final live = _isActivelyPlaying;
     if (live) {
+      _failedPlaybackKeys.clear();
       if (!_observedPreheatPlaying) {
         _observedPreheatPlaying = true;
         _ensurePreheatCandidates();
@@ -839,9 +846,15 @@ class PlayerStore extends ChangeNotifier {
   }
 
   Future<void> _playAt(int idx,
-      {double position = 0, bool autoplay = true, bool recover = false}) async {
+      {double position = 0,
+      bool autoplay = true,
+      bool recover = false,
+      bool automaticFailureAdvance = false}) async {
     final session = _session;
     if (session == null || idx < 0 || idx >= queue.length) return;
+    if (!recover && !automaticFailureAdvance) {
+      _failedPlaybackKeys.clear();
+    }
 
     // Recovery deliberately bypasses the retained item: a failed/expired
     // transport must be rebuilt instead of being restored repeatedly.
@@ -991,12 +1004,9 @@ class PlayerStore extends ChangeNotifier {
         final okTransport =
             !result.hasTransport || result.playbackKind == 'http';
         if (result.status != 'ready' || !okTransport || resolved == null) {
-          loading = false;
-          _setWantsPlayback(false);
           final message = result.hasTransport
               ? '此音源传输方式暂不支持，请选择其他完整音源'
               : '${result.reason ?? '音源准备中'}，请重试播放或换源';
-          _setSourceProgress(PlaybackSourcePhase.failed, detail: message);
           await session.api
               .delete('/api/playback/intents/$intentID')
               .catchError((_) {});
@@ -1006,8 +1016,15 @@ class PlayerStore extends ChangeNotifier {
                 .catchError((_) {});
           }
           if (mine != _token) return;
-          _ui?.notify(message);
-          notifyListeners();
+          if (!recover && autoplay) {
+            await _playAt(idx,
+                position: position,
+                autoplay: true,
+                recover: true,
+                automaticFailureAdvance: automaticFailureAdvance);
+            return;
+          }
+          await _finishPlaybackFailure(idx, message, autoplay);
           return;
         }
         playURL = resolved;
@@ -1088,7 +1105,11 @@ class PlayerStore extends ChangeNotifier {
             .catchError((_) {});
       }
       if (mine == _token && !recover && autoplay) {
-        await _playAt(idx, position: position, autoplay: true, recover: true);
+        await _playAt(idx,
+            position: position,
+            autoplay: true,
+            recover: true,
+            automaticFailureAdvance: automaticFailureAdvance);
         return;
       }
       if (mine == _token) {
@@ -1099,14 +1120,8 @@ class PlayerStore extends ChangeNotifier {
         _playbackSessionID = null;
       }
       if (mine != _token) return;
-      loading = false;
-      _setWantsPlayback(false);
-      playing = false;
       final message = _describeError(error);
-      _setSourceProgress(PlaybackSourcePhase.failed, detail: message);
-      _ui?.openSource(row);
-      _ui?.notify(message);
-      notifyListeners();
+      await _finishPlaybackFailure(idx, message, autoplay);
     }
   }
 
@@ -1117,6 +1132,65 @@ class PlayerStore extends ChangeNotifier {
     if (error is PlayerException) return '音源接口返回了无法播放的数据，请重试';
     if (error is PlayerInterruptedException) return '播放被中断，请重试';
     return '无法打开音频';
+  }
+
+  Future<void> _finishPlaybackFailure(
+      int failedIndex, String message, bool autoplay) async {
+    await _av.stop().catchError((_) {});
+    _loadedTrackKey = null;
+    _loadedURL = null;
+    _loadedHeaders = const {};
+    _playbackIntentID = null;
+    _playbackSessionID = null;
+    loading = false;
+    _setWantsPlayback(false);
+    playing = false;
+    _setSourceProgress(PlaybackSourcePhase.failed, detail: message);
+
+    if (failedIndex >= 0 && failedIndex < queue.length) {
+      final failedTrack = queue[failedIndex];
+      _failedPlaybackKeys.add(failedTrack.key);
+      final nextIndex = autoplay ? _nextIndexAfterFailure(failedIndex) : null;
+      if (nextIndex != null) {
+        LocalLogStore.shared.warn(
+          AppLogCategory.player,
+          'playback.auto_skipped',
+          fields: {
+            'track': failedTrack.key,
+            'nextTrack': queue[nextIndex].key,
+            'error': message,
+          },
+        );
+        _ui?.notify('「${failedTrack.title}」音源不可用，已自动播放下一首');
+        notifyListeners();
+        await _playAt(nextIndex,
+            autoplay: true, automaticFailureAdvance: true);
+        return;
+      }
+      _ui?.openSource(failedTrack);
+    }
+
+    _ui?.notify(_failedPlaybackKeys.length >= queue.length
+        ? '播放列表中的歌曲均无可用音源'
+        : message);
+    notifyListeners();
+  }
+
+  int? _nextIndexAfterFailure(int failedIndex) {
+    if (queue.length <= 1) return null;
+    final order = shuffle && _shuffleSeq.length == queue.length
+        ? List<int>.of(_shuffleSeq)
+        : List<int>.generate(queue.length, (i) => i);
+    final failedIndices = <int>{
+      for (final candidate in order)
+        if (_failedPlaybackKeys.contains(queue[candidate].key)) candidate,
+    };
+    return PlaybackFailurePolicy.nextIndex(
+      order: order,
+      current: failedIndex,
+      failed: failedIndices,
+      wrap: repeatMode == 2,
+    );
   }
 
   // ---------------------------------------------------------------------------

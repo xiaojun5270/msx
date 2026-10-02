@@ -173,14 +173,15 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
         if (p != null) _playlist = p;
         break;
       case ListKind.platform:
-        final enc = _enc(widget.id);
         final key = 'detail.playlist.platform.${widget.platform}.${widget.id}';
         final cached = session.peekPage(key, Playlist.fromJson);
         if (_playlist == null && cached != null) _playlist = cached;
-        final path = refresh
-            ? '/api/playlists/${widget.platform}/$enc?refresh=1'
-            : '/api/playlists/${widget.platform}/$enc';
-        final p = await session.fetchPage(path, cacheKey: key, factory: Playlist.fromJson);
+        final p = await session.fetchFullPlatformPlaylist(
+          widget.platform,
+          widget.id,
+          cacheKey: key,
+          refresh: refresh,
+        );
         if (p != null) _playlist = p;
         break;
     }

@@ -428,6 +428,30 @@ class RecommendBox {
       );
 }
 
+class GuessYouLikePage {
+  final List<Track> tracks;
+  final int? total;
+  final bool hasMore;
+  final int? nextOffset;
+  final String? generatedAt;
+
+  const GuessYouLikePage({
+    this.tracks = const [],
+    this.total,
+    this.hasMore = false,
+    this.nextOffset,
+    this.generatedAt,
+  });
+
+  factory GuessYouLikePage.fromJson(Map<String, dynamic> c) => GuessYouLikePage(
+        tracks: decodeList(c['tracks'], Track.fromJson),
+        total: asInt(c['total']),
+        hasMore: asBool(c['hasMore']) ?? false,
+        nextOffset: asInt(c['nextOffset']),
+        generatedAt: asString(c['generatedAt']),
+      );
+}
+
 class DiscoverPlaylists {
   final List<Playlist>? public;
   final List<Playlist>? shared;

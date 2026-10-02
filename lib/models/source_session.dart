@@ -461,6 +461,26 @@ class SourceEndPolicy {
   }
 }
 
+class PlaybackFailurePolicy {
+  static int? nextIndex({
+    required List<int> order,
+    required int current,
+    required Set<int> failed,
+    required bool wrap,
+  }) {
+    final currentPosition = order.indexOf(current);
+    if (currentPosition < 0 || order.length <= 1) return null;
+    final candidates = <int>[
+      ...order.skip(currentPosition + 1),
+      if (wrap) ...order.take(currentPosition),
+    ];
+    for (final candidate in candidates) {
+      if (!failed.contains(candidate)) return candidate;
+    }
+    return null;
+  }
+}
+
 class SourceHandoffPolicy {
   static double position({
     required double current,
