@@ -560,19 +560,52 @@ class _GuessPlaylistCard extends StatelessWidget {
     required this.height,
   });
 
-  void _play(BuildContext context) {
+  bool _matchesQueue(List<Track> queue) {
+    if (queue.isEmpty || queue.length > tracks.length) return false;
+    for (var i = 0; i < queue.length; i++) {
+      if (queue[i].key != tracks[i].key) return false;
+    }
+    return true;
+  }
+
+  void _togglePlayback(BuildContext context) {
     if (tracks.isEmpty) return;
     final player = context.read<PlayerStore>();
+    if (_matchesQueue(player.queue)) {
+      player.toggle();
+      return;
+    }
     if (!player.shuffle) player.toggleShuffle();
     final start = DateTime.now().microsecondsSinceEpoch % tracks.length;
-    player.replaceQueue(tracks, start: start);
+    player.replaceQueue(
+      tracks,
+      start: start,
+      source: PlaySource(
+        kind: 'recommendation',
+        platform: 'mixed',
+        id: 'guess-you-like',
+        title: '猜你喜欢',
+        trackCount: tracks.length,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final playback = context
+        .select<PlayerStore, ({List<Track> queue, bool playing, bool loading})>(
+      (player) => (
+        queue: player.queue,
+        playing: player.playing,
+        loading: player.loading,
+      ),
+    );
+    final active = _matchesQueue(playback.queue);
+    final playing = active && playback.playing;
+    final loading = active && playback.loading;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () => _play(context),
+      onTap: () => _togglePlayback(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: SizedBox(
@@ -606,7 +639,11 @@ class _GuessPlaylistCard extends StatelessWidget {
               Positioned(
                 right: 18,
                 bottom: 18,
-                child: _GuessPlayButton(onPressed: () => _play(context)),
+                child: _GuessPlayButton(
+                  playing: playing,
+                  loading: loading,
+                  onPressed: () => _togglePlayback(context),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 18, 82, 18),
@@ -670,8 +707,14 @@ class _GuessBadge extends StatelessWidget {
 }
 
 class _GuessPlayButton extends StatelessWidget {
+  final bool playing;
+  final bool loading;
   final VoidCallback onPressed;
-  const _GuessPlayButton({required this.onPressed});
+  const _GuessPlayButton({
+    required this.playing,
+    required this.loading,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -679,9 +722,22 @@ class _GuessPlayButton extends StatelessWidget {
       color: MX.ember,
       shape: const CircleBorder(),
       child: IconButton(
-        tooltip: '播放',
+        tooltip: loading ? '取消加载' : (playing ? '暂停' : '播放'),
         onPressed: onPressed,
-        icon: Icon(Icons.play_arrow_rounded, color: MX.onAccent, size: 31),
+        icon: loading
+            ? SizedBox(
+                width: 25,
+                height: 25,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: MX.onAccent,
+                ),
+              )
+            : Icon(
+                playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: MX.onAccent,
+                size: 31,
+              ),
         iconSize: 31,
         padding: const EdgeInsets.all(12),
       ),
