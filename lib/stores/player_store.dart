@@ -1167,12 +1167,22 @@ class PlayerStore extends ChangeNotifier {
             autoplay: true, automaticFailureAdvance: true);
         return;
       }
-      _ui?.openSource(failedTrack);
     }
 
-    _ui?.notify(_failedPlaybackKeys.length >= queue.length
-        ? '播放列表中的歌曲均无可用音源'
-        : message);
+    LocalLogStore.shared.warn(
+      AppLogCategory.player,
+      'playback.auto_skip_exhausted',
+      fields: {
+        'queueLength': '${queue.length}',
+        'failedCount': '${_failedPlaybackKeys.length}',
+        'index': '$failedIndex',
+        'shuffle': '$shuffle',
+        'error': message,
+      },
+    );
+    _ui?.notify(queue.length <= 1
+        ? '当前歌曲没有可用音源'
+        : '播放列表中的歌曲均无可用音源');
     notifyListeners();
   }
 
@@ -1189,7 +1199,7 @@ class PlayerStore extends ChangeNotifier {
       order: order,
       current: failedIndex,
       failed: failedIndices,
-      wrap: repeatMode == 2,
+      wrap: true,
     );
   }
 
