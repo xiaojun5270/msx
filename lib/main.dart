@@ -61,8 +61,8 @@ Future<void> main() async {
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'app.altman.musix.playback',
         androidNotificationChannelName: '正在播放',
-        androidNotificationOngoing: true,
-        androidStopForegroundOnPause: true,
+        androidNotificationOngoing: false,
+        androidStopForegroundOnPause: false,
       ),
     );
   } catch (error, stackTrace) {

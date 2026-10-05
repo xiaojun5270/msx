@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
@@ -67,6 +68,16 @@ class PlayerStore extends ChangeNotifier {
   AudioPlayer _av = AudioPlayer(
     userAgent: 'Musix/1.0 (Android)',
     useProxyForRequestHeaders: false,
+    audioLoadConfiguration: const AudioLoadConfiguration(
+      androidLoadControl: AndroidLoadControl(
+        minBufferDuration: Duration(minutes: 3),
+        maxBufferDuration: Duration(minutes: 5),
+        bufferForPlaybackDuration: Duration(seconds: 3),
+        bufferForPlaybackAfterRebufferDuration: Duration(seconds: 10),
+        prioritizeTimeOverSizeThresholds: true,
+        backBufferDuration: Duration(seconds: 30),
+      ),
+    ),
   );
   AudioPlayer get engine => _av;
 
@@ -91,6 +102,7 @@ class PlayerStore extends ChangeNotifier {
   List<int> _shuffleSeq = [];
   String? _recordingCorrespondence;
   bool _recovering = false;
+  int _sourceRecoveryAttempt = 0;
   final Set<String> _failedPlaybackKeys = {};
   String? _loadedTrackKey;
   Uri? _loadedURL;
@@ -133,12 +145,17 @@ class PlayerStore extends ChangeNotifier {
         'recovering': '$_recovering',
       },
     );
-    if (!_recovering && index >= 0 && index < queue.length) {
-      await _playAt(index,
+    if (index >= 0 &&
+        index < queue.length &&
+        await _retryCurrentSource(
+          generation: generation,
+          idx: index,
           position: current,
           autoplay: true,
-          recover: true,
-          automaticFailureAdvance: _failedPlaybackKeys.isNotEmpty);
+          recoveryAttempt: _sourceRecoveryAttempt,
+          automaticFailureAdvance: _failedPlaybackKeys.isNotEmpty,
+          error: error,
+        )) {
       return;
     }
     final failedIndex = index;
@@ -146,8 +163,7 @@ class PlayerStore extends ChangeNotifier {
     _loadedTrackKey = null;
     _loadedURL = null;
     if (generation != _token) return;
-    await _finishPlaybackFailure(
-        failedIndex, _describeError(error), true);
+    await _finishPlaybackFailure(failedIndex, _describeError(error), true);
   }
 
   // ---------------------------------------------------------------------------
@@ -213,6 +229,7 @@ class PlayerStore extends ChangeNotifier {
     _loadedHeaders = const {};
     _recordingCorrespondence = null;
     _recovering = false;
+    _sourceRecoveryAttempt = 0;
     _failedPlaybackKeys.clear();
     sourceProgress = PlaybackSourceProgress(phase: PlaybackSourcePhase.idle);
     _session?.local.clearPlayer();
@@ -231,6 +248,11 @@ class PlayerStore extends ChangeNotifier {
       final secs = pos.inMilliseconds / 1000.0;
       if ((secs - current).abs() >= 0.05) {
         current = secs;
+        if (_av.playing) {
+          _recovering = false;
+          _sourceRecoveryAttempt = 0;
+          _failedPlaybackKeys.clear();
+        }
         _syncLyric();
         notifyListeners();
       }
@@ -275,7 +297,6 @@ class PlayerStore extends ChangeNotifier {
   void _syncPlaybackState() {
     final live = _isActivelyPlaying;
     if (live) {
-      _failedPlaybackKeys.clear();
       if (!_observedPreheatPlaying) {
         _observedPreheatPlaying = true;
         _ensurePreheatCandidates();
@@ -719,7 +740,7 @@ class PlayerStore extends ChangeNotifier {
     _setSourceProgress(PlaybackSourcePhase.ready);
     try {
       await _av.setAudioSource(
-        AudioSource.uri(retained.url, headers: retained.headers),
+        await _cachedAudioSource(retained.url, retained.headers),
         initialPosition: Duration(milliseconds: (current * 1000).round()),
       );
     } catch (error) {
@@ -849,6 +870,7 @@ class PlayerStore extends ChangeNotifier {
       {double position = 0,
       bool autoplay = true,
       bool recover = false,
+      int recoveryAttempt = 0,
       bool automaticFailureAdvance = false}) async {
     final session = _session;
     if (session == null || idx < 0 || idx >= queue.length) return;
@@ -867,7 +889,9 @@ class PlayerStore extends ChangeNotifier {
       }
     }
     _stopPreheat();
-    _retainCurrentPlaybackIfPossible();
+    if (!recover) {
+      _retainCurrentPlaybackIfPossible();
+    }
     index = idx;
     final row = queue[idx];
     LocalLogStore.shared.info(
@@ -885,6 +909,7 @@ class PlayerStore extends ChangeNotifier {
       _recovering = false;
     }
     _recovering = recover;
+    _sourceRecoveryAttempt = recoveryAttempt;
 
     var deadline = DateTime.now().add(const Duration(minutes: 15));
     final oldIntent = _playbackIntentID;
@@ -1016,12 +1041,15 @@ class PlayerStore extends ChangeNotifier {
                 .catchError((_) {});
           }
           if (mine != _token) return;
-          if (!recover && autoplay) {
-            await _playAt(idx,
-                position: position,
-                autoplay: true,
-                recover: true,
-                automaticFailureAdvance: automaticFailureAdvance);
+          if (await _retryCurrentSource(
+            generation: mine,
+            idx: idx,
+            position: position,
+            autoplay: autoplay,
+            recoveryAttempt: recoveryAttempt,
+            automaticFailureAdvance: automaticFailureAdvance,
+            error: ApiError(message),
+          )) {
             return;
           }
           await _finishPlaybackFailure(idx, message, autoplay);
@@ -1042,7 +1070,7 @@ class PlayerStore extends ChangeNotifier {
       _setSourceProgress(PlaybackSourcePhase.buffering);
       final loadedDuration = await _av
           .setAudioSource(
-            AudioSource.uri(probe.finalUrl, headers: engineHeaders),
+            await _cachedAudioSource(probe.finalUrl, engineHeaders),
             initialPosition: position > 0
                 ? Duration(milliseconds: (position * 1000).round())
                 : Duration.zero,
@@ -1104,12 +1132,16 @@ class PlayerStore extends ChangeNotifier {
             .delete('/api/playback/sessions/$createdSessionID')
             .catchError((_) {});
       }
-      if (mine == _token && !recover && autoplay) {
-        await _playAt(idx,
+      if (mine == _token &&
+          await _retryCurrentSource(
+            generation: mine,
+            idx: idx,
             position: position,
-            autoplay: true,
-            recover: true,
-            automaticFailureAdvance: automaticFailureAdvance);
+            autoplay: autoplay,
+            recoveryAttempt: recoveryAttempt,
+            automaticFailureAdvance: automaticFailureAdvance,
+            error: error,
+          )) {
         return;
       }
       if (mine == _token) {
@@ -1132,6 +1164,103 @@ class PlayerStore extends ChangeNotifier {
     if (error is PlayerException) return '音源接口返回了无法播放的数据，请重试';
     if (error is PlayerInterruptedException) return '播放被中断，请重试';
     return '无法打开音频';
+  }
+
+  Future<bool> _retryCurrentSource({
+    required int generation,
+    required int idx,
+    required double position,
+    required bool autoplay,
+    required int recoveryAttempt,
+    required bool automaticFailureAdvance,
+    required Object error,
+  }) async {
+    if (!PlaybackRecoveryPolicy.canRetry(
+          autoplay: autoplay,
+          attempt: recoveryAttempt,
+        ) ||
+        generation != _token) {
+      return false;
+    }
+    final nextAttempt = recoveryAttempt + 1;
+    final delay = PlaybackRecoveryPolicy.delayForAttempt(nextAttempt);
+    LocalLogStore.shared.warn(
+      AppLogCategory.player,
+      'playback.source_retry',
+      fields: {
+        'track': idx >= 0 && idx < queue.length ? queue[idx].key : '',
+        'attempt': '$nextAttempt',
+        'delayMs': '${delay.inMilliseconds}',
+        'error': error.toString(),
+      },
+    );
+    _setSourceProgress(PlaybackSourcePhase.buffering, detail: '网络波动，正在重新连接');
+    await Future.delayed(delay);
+    if (generation != _token) return true;
+    await _playAt(
+      idx,
+      position: position,
+      autoplay: true,
+      recover: true,
+      recoveryAttempt: nextAttempt,
+      automaticFailureAdvance: automaticFailureAdvance,
+    );
+    return true;
+  }
+
+  Future<AudioSource> _cachedAudioSource(
+      Uri uri, Map<String, String> headers) async {
+    final source = LockCachingAudioSource(uri, headers: headers);
+    final resolved = await source.resolve();
+    unawaited(_pruneAudioCache(source));
+    return resolved;
+  }
+
+  Future<void> _pruneAudioCache(LockCachingAudioSource active) async {
+    try {
+      final activeFile = await active.cacheFile;
+      final directory = activeFile.parent;
+      if (!await directory.exists()) return;
+      final groups = <String, List<File>>{};
+      final partial = <String>{};
+      await for (final entity in directory.list()) {
+        if (entity is! File) continue;
+        var base = entity.path;
+        if (base.endsWith('.part')) {
+          base = base.substring(0, base.length - 5);
+          partial.add(base);
+        } else if (base.endsWith('.mime')) {
+          base = base.substring(0, base.length - 5);
+        }
+        groups.putIfAbsent(base, () => []).add(entity);
+      }
+      final completed = groups.entries
+          .where((entry) =>
+              !partial.contains(entry.key) &&
+              entry.value.any((file) => file.path == entry.key))
+          .toList();
+      if (completed.length <= 8) return;
+      final activeBase = activeFile.path;
+      final stale = <({String base, DateTime modified, List<File> files})>[];
+      for (final entry in completed) {
+        if (entry.key == activeBase) continue;
+        var modified = DateTime.fromMillisecondsSinceEpoch(0);
+        for (final file in entry.value) {
+          final value = await file.lastModified();
+          if (value.isAfter(modified)) modified = value;
+        }
+        stale.add((base: entry.key, modified: modified, files: entry.value));
+      }
+      stale.sort((a, b) => a.modified.compareTo(b.modified));
+      final removeCount = completed.length - 8;
+      for (final entry in stale.take(removeCount)) {
+        for (final file in entry.files) {
+          await file.delete().catchError((_) => file);
+        }
+      }
+    } catch (_) {
+      // Cache pruning is best-effort and must never interrupt playback.
+    }
   }
 
   Future<void> _finishPlaybackFailure(
@@ -1163,8 +1292,7 @@ class PlayerStore extends ChangeNotifier {
         );
         _ui?.notify('「${failedTrack.title}」音源不可用，已自动播放下一首');
         notifyListeners();
-        await _playAt(nextIndex,
-            autoplay: true, automaticFailureAdvance: true);
+        await _playAt(nextIndex, autoplay: true, automaticFailureAdvance: true);
         return;
       }
     }
@@ -1180,9 +1308,7 @@ class PlayerStore extends ChangeNotifier {
         'error': message,
       },
     );
-    _ui?.notify(queue.length <= 1
-        ? '当前歌曲没有可用音源'
-        : '播放列表中的歌曲均无可用音源');
+    _ui?.notify(queue.length <= 1 ? '当前歌曲没有可用音源' : '播放列表中的歌曲均无可用音源');
     notifyListeners();
   }
 

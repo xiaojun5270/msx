@@ -60,4 +60,26 @@ void main() {
       );
     });
   });
+
+  group('PlaybackRecoveryPolicy', () {
+    test('retries autoplay failures three times', () {
+      expect(
+          PlaybackRecoveryPolicy.canRetry(autoplay: true, attempt: 0), isTrue);
+      expect(
+          PlaybackRecoveryPolicy.canRetry(autoplay: true, attempt: 2), isTrue);
+      expect(
+          PlaybackRecoveryPolicy.canRetry(autoplay: true, attempt: 3), isFalse);
+      expect(PlaybackRecoveryPolicy.canRetry(autoplay: false, attempt: 0),
+          isFalse);
+    });
+
+    test('backs off before each retry', () {
+      expect(PlaybackRecoveryPolicy.delayForAttempt(1),
+          const Duration(seconds: 1));
+      expect(PlaybackRecoveryPolicy.delayForAttempt(2),
+          const Duration(seconds: 3));
+      expect(PlaybackRecoveryPolicy.delayForAttempt(3),
+          const Duration(seconds: 6));
+    });
+  });
 }

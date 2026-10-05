@@ -481,6 +481,22 @@ class PlaybackFailurePolicy {
   }
 }
 
+class PlaybackRecoveryPolicy {
+  static const maxAttempts = 3;
+
+  static bool canRetry({
+    required bool autoplay,
+    required int attempt,
+  }) =>
+      autoplay && attempt < maxAttempts;
+
+  static Duration delayForAttempt(int attempt) => switch (attempt) {
+        1 => const Duration(seconds: 1),
+        2 => const Duration(seconds: 3),
+        _ => const Duration(seconds: 6),
+      };
+}
+
 class SourceHandoffPolicy {
   static double position({
     required double current,
