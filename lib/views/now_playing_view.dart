@@ -11,6 +11,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'queue_actions.dart';
 
 enum _NPPage { artwork, queue, lyrics }
 
@@ -523,6 +524,13 @@ class _QueuePage extends StatelessWidget {
                     fontSize: 19,
                     fontWeight: FontWeight.bold)),
             const Spacer(),
+            if (player.queue.isNotEmpty)
+              IconButton(
+                tooltip: '清空队列',
+                onPressed: () => confirmClearPlaybackQueue(context),
+                icon: Icon(Icons.delete_sweep_outlined,
+                    color: Colors.white.withOpacity(0.72), size: 22),
+              ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -607,8 +615,13 @@ class _QueuePage extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            Icon(Icons.drag_handle,
-                                color: Colors.white.withOpacity(0.34)),
+                            IconButton(
+                              tooltip: '从队列删除',
+                              onPressed: () => player.removeAt(i),
+                              icon: Icon(Icons.delete_outline_rounded,
+                                  color: Colors.white.withOpacity(0.5),
+                                  size: 21),
+                            ),
                           ],
                         ),
                       ),
@@ -837,8 +850,8 @@ class _Transport extends StatelessWidget {
       );
 }
 
-/// Volume slider row. Mirrors Swift `NowPlayingVolume` (device volume on iOS →
-/// the app player volume on Android).
+/// Volume slider row. On Android this controls the system media stream and is
+/// kept in sync with hardware volume buttons.
 class _VolumeRow extends StatelessWidget {
   const _VolumeRow();
 

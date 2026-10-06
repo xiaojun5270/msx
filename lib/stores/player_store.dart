@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 
@@ -89,6 +90,12 @@ class PlayerStore extends ChangeNotifier {
   Stream<bool> get favoriteChanges => _favoriteCtrl.stream;
 
   final List<StreamSubscription> _engineSubs = [];
+  StreamSubscription<dynamic>? _systemVolumeSub;
+
+  static const _systemVolumeChannel =
+      MethodChannel('com.musix.app/system_volume');
+  static const _systemVolumeEvents =
+      EventChannel('com.musix.app/system_volume_events');
 
   SessionStore? _session;
   UIStore? _ui;
@@ -182,7 +189,7 @@ class PlayerStore extends ChangeNotifier {
       _rebuildShuffle(anchor: index);
     }
     _attachEngineListeners();
-    _applyVolume();
+    unawaited(_bindSystemVolume());
     _syncPlaybackState();
     notifyListeners();
   }
@@ -415,13 +422,71 @@ class PlayerStore extends ChangeNotifier {
 
   Future<void> next() async => _advance(fromEnd: false);
 
+  bool get _usesSystemVolume =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   void setVolume(double v) {
-    volume = v.clamp(0.0, 1.0);
+    final next = v.clamp(0.0, 1.0);
+    if (volume != next) {
+      volume = next;
+      notifyListeners();
+    }
+    if (_usesSystemVolume) {
+      unawaited(_setSystemVolume(next));
+    } else {
+      _applyVolume();
+    }
+  }
+
+  Future<void> _bindSystemVolume() async {
     _applyVolume();
+    if (!_usesSystemVolume) return;
+    await _systemVolumeSub?.cancel();
+    _systemVolumeSub = _systemVolumeEvents.receiveBroadcastStream().listen(
+      _acceptSystemVolume,
+      onError: (Object error) {
+        LocalLogStore.shared.warn(
+          AppLogCategory.player,
+          'system_volume.stream_failed',
+          fields: {'error': error.toString()},
+        );
+      },
+    );
+    try {
+      _acceptSystemVolume(
+          await _systemVolumeChannel.invokeMethod<num>('getMediaVolume'));
+    } catch (error) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.player,
+        'system_volume.read_failed',
+        fields: {'error': error.toString()},
+      );
+    }
+  }
+
+  void _acceptSystemVolume(dynamic value) {
+    if (value is! num) return;
+    final next = value.toDouble().clamp(0.0, 1.0);
+    if ((next - volume).abs() < 0.001) return;
+    volume = next;
     notifyListeners();
   }
 
-  void _applyVolume() => _av.setVolume(volume);
+  Future<void> _setSystemVolume(double value) async {
+    try {
+      final actual = await _systemVolumeChannel
+          .invokeMethod<num>('setMediaVolume', {'value': value});
+      _acceptSystemVolume(actual);
+    } catch (error) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.player,
+        'system_volume.write_failed',
+        fields: {'error': error.toString()},
+      );
+    }
+  }
+
+  void _applyVolume() => _av.setVolume(_usesSystemVolume ? 1 : volume);
 
   void toggleShuffle() {
     shuffle = !shuffle;
@@ -547,26 +612,101 @@ class PlayerStore extends ChangeNotifier {
 
   Future<void> removeAt(int idx) async {
     if (idx < 0 || idx >= queue.length) return;
+    final removed = queue[idx];
     if (idx == index) {
+      final resumePlayback = _wantsPlayback || _isActivelyPlaying || loading;
       queue.removeAt(idx);
       if (queue.isEmpty) {
-        index = -1;
-        _token += 1;
-        await _av.stop();
-        _loadedTrackKey = null;
-        playing = false;
-        _setSourceProgress(PlaybackSourcePhase.idle);
+        await clearQueue();
+        return;
       } else {
+        _loadedTrackKey = null;
+        _loadedURL = null;
+        _loadedHeaders = const {};
         index = idx.clamp(0, queue.length - 1);
-        await _playAt(index);
+        await _playAt(index, autoplay: resumePlayback);
       }
     } else {
       queue.removeAt(idx);
       if (idx < index) index -= 1;
     }
+    _failedPlaybackKeys.remove(removed.key);
+    _removeRetainedPlayback(removed.key, discard: true);
     _rebuildShuffle(anchor: index);
     _persist();
     _preheatQueueDidChange();
+    notifyListeners();
+  }
+
+  Future<void> clearQueue() async {
+    final session = _session;
+    final intentID = _playbackIntentID;
+    final sessionID = _playbackSessionID;
+    _stopPreheat();
+    _token += 1;
+    _lyricsToken += 1;
+    _setWantsPlayback(false);
+
+    for (final timer in _retainedExpiry.values) {
+      timer.cancel();
+    }
+    for (final retained in _retained.values) {
+      _discardRetainedPlayback(retained);
+    }
+    _retainedExpiry.clear();
+    _retained.clear();
+
+    try {
+      await _av.stop();
+    } catch (error) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.player,
+        'queue.clear_stop_failed',
+        fields: {'error': error.toString()},
+      );
+    }
+
+    if (session != null) {
+      if (intentID != null) {
+        unawaited(session.api
+            .delete('/api/playback/intents/$intentID')
+            .catchError((_) {}));
+      }
+      if (sessionID != null) {
+        unawaited(session.api
+            .delete('/api/playback/sessions/$sessionID')
+            .catchError((_) {}));
+      }
+    }
+
+    queue = [];
+    index = -1;
+    playing = false;
+    loading = false;
+    current = 0;
+    duration = 0;
+    favorited = false;
+    trial = false;
+    selectedSourceKey = null;
+    sourceKind = null;
+    sourcePlatform = null;
+    lyrics = [];
+    lyricIndex = 0;
+    lyricsLoading = false;
+    lyricsMessage = null;
+    _playbackIntentID = null;
+    _playbackSessionID = null;
+    _loadedTrackKey = null;
+    _loadedURL = null;
+    _loadedHeaders = const {};
+    _recordingCorrespondence = null;
+    _recovering = false;
+    _sourceRecoveryAttempt = 0;
+    _failedPlaybackKeys.clear();
+    sourceProgress = PlaybackSourceProgress(phase: PlaybackSourcePhase.idle);
+    session?.local.clearPlayer();
+    _publishNowPlaying();
+    _ui?.notify('已清空播放队列');
     notifyListeners();
   }
 
@@ -1991,6 +2131,7 @@ class PlayerStore extends ChangeNotifier {
     }
     _mediaItemCtrl.close();
     _favoriteCtrl.close();
+    _systemVolumeSub?.cancel();
     _av.dispose();
     super.dispose();
   }

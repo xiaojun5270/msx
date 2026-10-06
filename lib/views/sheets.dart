@@ -9,6 +9,7 @@ import '../stores/ui_store.dart';
 import '../theme/glass.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'queue_actions.dart';
 
 /// Header + drag chrome shared by the aux sheets (mirrors the SwiftUI
 /// `.presentationDetents` / `.presentationDragIndicator` sheet look).
@@ -106,6 +107,16 @@ class QueueSheet extends StatelessWidget {
     return _sheetFrame(
       title: '队列',
       controller: controller,
+      actions: queue.isEmpty
+          ? null
+          : [
+              IconButton(
+                tooltip: '清空队列',
+                onPressed: () => confirmClearPlaybackQueue(context),
+                icon:
+                    Icon(Icons.delete_sweep_outlined, color: MX.mute, size: 22),
+              ),
+            ],
       body: queue.isEmpty
           ? Center(
               child:
@@ -159,6 +170,12 @@ class QueueSheet extends StatelessWidget {
                         ),
                         if (current)
                           Icon(Icons.volume_up, size: 16, color: MX.ember),
+                        IconButton(
+                          tooltip: '从队列删除',
+                          onPressed: () => player.removeAt(i),
+                          icon: Icon(Icons.delete_outline_rounded,
+                              size: 20, color: MX.mute),
+                        ),
                       ],
                     ),
                   ),
