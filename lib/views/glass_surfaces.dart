@@ -13,16 +13,37 @@ class MusicGlassPanel extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double radius;
   final GlassQuality quality;
+  final bool refractBackground;
   const MusicGlassPanel(
       {super.key,
       required this.child,
       this.padding = EdgeInsets.zero,
       this.radius = 24,
-      this.quality = GlassQuality.standard});
+      this.quality = GlassQuality.standard,
+      this.refractBackground = false});
 
   @override
   Widget build(BuildContext context) {
     final settings = playerGlassSettings(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // Content cards have a clear, non-sampling surface. BackdropFilter inside
+    // scrollable repaint boundaries can appear/disappear on device compositors.
+    // Do not merely set sigma to zero: avoid both the filter and shader path.
+    if (!refractBackground) {
+      return Stack(children: [
+        Positioned.fill(
+            child: IgnorePointer(
+                child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: dark ? 0.18 : 0.34),
+                width: 0.8),
+          ),
+        ))),
+        Padding(padding: padding, child: child),
+      ]);
+    }
     return Stack(children: [
       Positioned.fill(
           child: IgnorePointer(

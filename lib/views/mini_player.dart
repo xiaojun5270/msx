@@ -51,6 +51,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
             if (velocity > 180 && expanded) ui.setPlayerExpanded(false);
           },
           child: MusicGlassPanel(
+            refractBackground: true,
             radius: expanded ? 28 : 34,
             quality: GlassQuality.premium,
             child: AnimatedSwitcher(
