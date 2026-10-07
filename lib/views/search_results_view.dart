@@ -8,6 +8,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 /// The pushed platform/share search results page. Mirrors Swift
 /// `SearchResultsPage`: type tab capsules, a "最佳结果" top card, grouped
@@ -52,9 +53,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
     final store = context.watch<SearchStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

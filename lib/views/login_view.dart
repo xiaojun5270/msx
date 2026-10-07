@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/glass.dart';
+import '../theme/player_glass.dart';
+import 'glass_surfaces.dart';
 import '../theme/theme.dart';
 
 /// The sign-in / initial-setup screen. Mirrors Swift `LoginView` (the compact
@@ -16,8 +18,6 @@ class LoginView extends StatefulWidget {
   State<LoginView> createState() => _LoginViewState();
 }
 
-enum _LoginField { server, password }
-
 class _LoginViewState extends State<LoginView> {
   final _serverCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -28,7 +28,6 @@ class _LoginViewState extends State<LoginView> {
   bool _advancedOpen = false;
   bool _loading = false;
   String _error = '';
-  _LoginField? _focused;
 
   @override
   void initState() {
@@ -36,20 +35,6 @@ class _LoginViewState extends State<LoginView> {
     final session = context.read<SessionStore>();
     _serverCtrl.text = session.baseURL;
     _proxyCtrl.text = session.proxyCookie;
-    _serverFocus.addListener(_syncFocus);
-    _passwordFocus.addListener(_syncFocus);
-  }
-
-  void _syncFocus() {
-    setState(() {
-      if (_serverFocus.hasFocus) {
-        _focused = _LoginField.server;
-      } else if (_passwordFocus.hasFocus) {
-        _focused = _LoginField.password;
-      } else {
-        _focused = null;
-      }
-    });
   }
 
   @override
@@ -132,10 +117,10 @@ class _LoginViewState extends State<LoginView> {
       children: [
         _brandMark(accent),
         const SizedBox(height: 34),
-        const Text(
+        Text(
           '你的音乐，\n在这里继续播放。',
           style: TextStyle(
-              color: Colors.white,
+              color: MX.fg,
               fontSize: 30,
               fontWeight: FontWeight.bold,
               height: 1.15),
@@ -175,16 +160,16 @@ class _LoginViewState extends State<LoginView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('MUSICX',
+            Text('MUSICX',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: MX.fg,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 2.8)),
             const SizedBox(height: 3),
             Text('YOUR PERSONAL SOUNDSPACE',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.42),
+                    color: MX.dim,
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.1)),
@@ -196,8 +181,8 @@ class _LoginViewState extends State<LoginView> {
             tooltip: '换一张背景',
             onPressed: ui.shuffleBackground,
             style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.08),
-              foregroundColor: Colors.white,
+              backgroundColor: MX.fill,
+              foregroundColor: MX.fg,
             ),
             icon: const Icon(Icons.shuffle_rounded, size: 19),
           ),
@@ -209,13 +194,11 @@ class _LoginViewState extends State<LoginView> {
     Widget label(String title, IconData icon) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: Colors.white.withOpacity(0.62)),
+            Icon(icon, size: 14, color: MX.dim),
             const SizedBox(width: 6),
             Text(title,
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.62),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500)),
+                    color: MX.dim, fontSize: 12, fontWeight: FontWeight.w500)),
           ],
         );
     return Row(
@@ -231,13 +214,9 @@ class _LoginViewState extends State<LoginView> {
 
   Widget _signInCard(SessionStore session, ThemeAccent accent) {
     final setup = session.setupRequired;
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(24),
-      blur: 34,
+    return MusicGlassPanel(
+      radius: 24,
       padding: const EdgeInsets.all(20),
-      tint: Colors.white.withOpacity(
-        Theme.of(context).brightness == Brightness.dark ? 0.075 : 0.82,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -283,71 +262,50 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _serverField(ThemeAccent accent) {
-    final active = _focused == _LoginField.server;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _inputLabel('服务器地址'),
-        const SizedBox(height: 8),
-        _inputBox(
-          active: active,
-          child: Row(
-            children: [
-              Icon(Icons.lan_outlined,
-                  size: 18, color: active ? accent.color : MX.dim),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _serverCtrl,
-                  focusNode: _serverFocus,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  textInputAction: TextInputAction.next,
-                  style: TextStyle(color: MX.fg),
-                  decoration: _plainInput('http://192.168.1.10:8080'),
-                  onSubmitted: (_) {
-                    _applyServer();
-                    _passwordFocus.requestFocus();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _inputLabel('服务器地址'),
+      const SizedBox(height: 8),
+      GlassTextField(
+        controller: _serverCtrl,
+        focusNode: _serverFocus,
+        placeholder: 'http://192.168.1.10:8080',
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.next,
+        prefixIcon: Icon(Icons.lan_outlined, size: 18, color: accent.color),
+        textStyle: TextStyle(color: MX.fg),
+        placeholderStyle: TextStyle(color: MX.dim),
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        settings: playerGlassSettings(context),
+        shape: const LiquidRoundedSuperellipse(borderRadius: 14),
+        onSubmitted: (_) {
+          _applyServer();
+          _passwordFocus.requestFocus();
+        },
+      ),
+    ]);
   }
 
   Widget _passwordField(ThemeAccent accent) {
-    final active = _focused == _LoginField.password;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _inputLabel('密码'),
-        const SizedBox(height: 8),
-        _inputBox(
-          active: active,
-          child: Row(
-            children: [
-              Icon(Icons.lock_outline,
-                  size: 18, color: active ? accent.color : MX.dim),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _passwordCtrl,
-                  focusNode: _passwordFocus,
-                  obscureText: true,
-                  textInputAction: TextInputAction.go,
-                  style: TextStyle(color: MX.fg),
-                  decoration: _plainInput('至少 8 位'),
-                  onSubmitted: (_) => _submit(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _inputLabel('密码'),
+      const SizedBox(height: 8),
+      GlassPasswordField(
+        controller: _passwordCtrl,
+        focusNode: _passwordFocus,
+        placeholder: '至少 8 位',
+        textInputAction: TextInputAction.go,
+        textStyle: TextStyle(color: MX.fg),
+        placeholderStyle: TextStyle(color: MX.dim),
+        showPasswordSemanticLabel: '显示密码',
+        hidePasswordSemanticLabel: '隐藏密码',
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        settings: playerGlassSettings(context),
+        shape: const LiquidRoundedRectangle(borderRadius: 14),
+        onSubmitted: (_) => _submit(),
+      ),
+    ]);
   }
 
   Widget _advancedToggle() {
@@ -373,28 +331,25 @@ class _LoginViewState extends State<LoginView> {
   Widget _advancedSection() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _inputLabel('代理 Cookie（NAS 反向代理鉴权）'),
-          const SizedBox(height: 9),
-          _inputBox(
-            active: false,
-            minHeight: 78,
-            child: TextField(
-              controller: _proxyCtrl,
-              maxLines: 4,
-              minLines: 2,
-              autocorrect: false,
-              style: TextStyle(color: MX.fg),
-              decoration: _plainInput('name=value; name2=value2'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text('仅当 NAS 反向代理要求 Cookie 鉴权时填写；一般无需配置。',
-              style: TextStyle(color: MX.dim, fontSize: 11)),
-        ],
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _inputLabel('代理 Cookie（NAS 反向代理鉴权）'),
+        const SizedBox(height: 9),
+        GlassTextField(
+          controller: _proxyCtrl,
+          maxLines: 4,
+          minLines: 2,
+          placeholder: 'name=value; name2=value2',
+          textStyle: TextStyle(color: MX.fg),
+          placeholderStyle: TextStyle(color: MX.dim),
+          useOwnLayer: true,
+          quality: GlassQuality.standard,
+          settings: playerGlassSettings(context),
+          shape: const LiquidRoundedSuperellipse(borderRadius: 14),
+        ),
+        const SizedBox(height: 8),
+        Text('仅当 NAS 反向代理要求 Cookie 鉴权时填写；一般无需配置。',
+            style: TextStyle(color: MX.dim, fontSize: 11)),
+      ]),
     );
   }
 
@@ -461,32 +416,6 @@ class _LoginViewState extends State<LoginView> {
           color: MX.fg.withOpacity(0.84),
           fontSize: 12,
           fontWeight: FontWeight.w600));
-
-  InputDecoration _plainInput(String hint) => InputDecoration(
-        isDense: true,
-        border: InputBorder.none,
-        hintText: hint,
-        hintStyle: TextStyle(color: MX.dim),
-      );
-
-  Widget _inputBox(
-      {required bool active, required Widget child, double minHeight = 48}) {
-    final accent = context.read<UIStore>().themeAccent;
-    return Container(
-      constraints: BoxConstraints(minHeight: minHeight),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: MX.fill,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: active ? accent.color.withOpacity(0.8) : MX.fillStrong,
-          width: active ? 1.5 : 1,
-        ),
-      ),
-      child: child,
-    );
-  }
 }
 
 /// Decorative gradient + glow background. Mirrors Swift `loginBackground`.
@@ -503,17 +432,23 @@ class _LoginBackground extends StatelessWidget {
     return IgnorePointer(
       child: Stack(
         children: [
-          const Positioned.fill(
+          Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color.fromRGBO(38, 20, 36, 1),
-                    MX.heroBase,
-                    Color.fromRGBO(13, 18, 31, 1),
-                  ],
+                  colors: Theme.of(context).brightness == Brightness.dark
+                      ? const [
+                          Color.fromRGBO(38, 20, 36, 1),
+                          MX.heroBase,
+                          Color.fromRGBO(13, 18, 31, 1),
+                        ]
+                      : const [
+                          Color(0xFFF9F5F8),
+                          Color(0xFFF1F4F7),
+                          Color(0xFFEDF1F8)
+                        ],
                 ),
               ),
             ),
@@ -528,21 +463,22 @@ class _LoginBackground extends StatelessWidget {
             bottom: -140,
             child: _glow(420, const Color.fromRGBO(79, 92, 214, 0.26)),
           ),
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Color.fromRGBO(12, 10, 14, 0.4),
-                    Color.fromRGBO(12, 10, 14, 0.85)
-                  ],
+          if (Theme.of(context).brightness == Brightness.dark)
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Color.fromRGBO(12, 10, 14, 0.4),
+                      Color.fromRGBO(12, 10, 14, 0.85)
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

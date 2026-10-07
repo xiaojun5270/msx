@@ -9,6 +9,7 @@ import '../theme/artwork_color.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 String _enc(String s) => Uri.encodeComponent(s);
 
@@ -35,9 +36,7 @@ class _HeroScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         foregroundColor: Colors.white,
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
         actions: [
@@ -358,8 +357,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
   void _confirmIngest() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('将 ${_ingestible.length} 首歌曲入库到本地？', style: TextStyle(color: MX.fg, fontSize: 17)),
         content: Text('按最高可用完整音质入库，不使用试听文件。已入库曲目会跳过；失败可在入库记录中重试。',
             style: TextStyle(color: MX.dim, fontSize: 13)),
@@ -374,8 +372,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
   void _confirmDelete() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('确定解散此歌单？', style: TextStyle(color: MX.fg, fontSize: 17)),
         content: Text('所有歌曲将被移除，此操作不可撤销。', style: TextStyle(color: MX.dim, fontSize: 13)),
         actions: [
@@ -558,8 +555,7 @@ class _AlbumDetailViewState extends State<AlbumDetailView> {
   void _confirmIngest() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('将 ${_ingestible.length} 首歌曲入库到本地？', style: TextStyle(color: MX.fg, fontSize: 17)),
         content: Text('按最高可用完整音质入库，不使用试听文件。已入库曲目会跳过；失败可在入库记录中重试。',
             style: TextStyle(color: MX.dim, fontSize: 13)),

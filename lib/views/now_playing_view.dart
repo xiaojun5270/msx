@@ -11,6 +11,8 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_controls.dart';
+import 'glass_surfaces.dart';
 import 'queue_actions.dart';
 
 enum _NPPage { artwork, queue, lyrics }
@@ -428,65 +430,32 @@ class _MoreMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final player = context.read<PlayerStore>();
+    final player = context.watch<PlayerStore>();
     final ui = context.read<UIStore>();
-    return IconButton(
-      icon: Container(
-        width: 40,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.14), shape: BoxShape.circle),
-        child: const Icon(Icons.more_horiz, color: Colors.white, size: 22),
-      ),
-      onPressed: () {
-        final track = player.track;
-        if (track == null) return;
-        showModalBottomSheet<void>(
-          context: context,
-          backgroundColor: MX.panel,
-          shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          builder: (sheet) {
-            Widget item(String label, IconData icon, VoidCallback tap) =>
-                ListTile(
-                  leading: Icon(icon, color: MX.fg),
-                  title: Text(label, style: TextStyle(color: MX.fg)),
-                  onTap: () {
-                    Navigator.pop(sheet);
-                    tap();
-                  },
-                );
-            return SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  item('换源', Icons.swap_horiz, () => ui.openSource(track)),
-                  item(
-                      player.favorited ? '取消喜欢' : '喜欢',
-                      player.favorited ? Icons.star : Icons.star_border,
-                      () => player.toggleFavorite()),
-                  item('加入歌单', Icons.playlist_add, () => ui.openPicker(track)),
-                  const Divider(height: 1),
-                  item(player.shuffle ? '关闭随机播放' : '随机播放', Icons.shuffle,
-                      () => player.toggleShuffle()),
-                  item(
-                      _repeatTitle(player.repeatMode),
-                      player.repeatMode == 1 ? Icons.repeat_one : Icons.repeat,
-                      () => player.cycleRepeat()),
-                  const Divider(height: 1),
-                  if ((track.albumId ?? '').isNotEmpty)
-                    item('前往专辑', Icons.album, () {
-                      player.setNowPlayingOpen(false);
-                      ui.open(AlbumRoute(
-                          platform: track.platform, id: track.albumId!));
-                    }),
-                ],
-              ),
-            );
-          },
-        );
-      },
+    final track = player.track;
+    if (track == null) return const SizedBox(width: 48);
+    return MusicActionsMenu(
+      title: track.title,
+      triggerColor: Colors.white,
+      actions: [
+        MusicMenuAction('换源', Icons.swap_horiz, () => ui.openSource(track)),
+        MusicMenuAction(
+            player.favorited ? '取消喜欢' : '喜欢',
+            player.favorited ? Icons.star : Icons.star_border,
+            () => player.toggleFavorite()),
+        MusicMenuAction('加入歌单', Icons.playlist_add, () => ui.openPicker(track)),
+        MusicMenuAction(player.shuffle ? '关闭随机播放' : '随机播放', Icons.shuffle,
+            () => player.toggleShuffle()),
+        MusicMenuAction(
+            _repeatTitle(player.repeatMode),
+            player.repeatMode == 1 ? Icons.repeat_one : Icons.repeat,
+            () => player.cycleRepeat()),
+        if ((track.albumId ?? '').isNotEmpty)
+          MusicMenuAction('前往专辑', Icons.album, () {
+            player.setNowPlayingOpen(false);
+            ui.open(AlbumRoute(platform: track.platform, id: track.albumId!));
+          }),
+      ],
     );
   }
 
@@ -764,7 +733,8 @@ class _ProgressState extends State<_Progress> {
                 enabledThumbRadius: widget.compact ? 5 : 7),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
           ),
-          child: Slider(
+          child: MusicGlassSlider(
+            label: '播放进度',
             value: _local.clamp(0, max),
             max: max,
             onChanged: enabled
@@ -871,7 +841,8 @@ class _VolumeRow extends StatelessWidget {
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
             ),
-            child: Slider(
+            child: MusicGlassSlider(
+              label: '系统媒体音量',
               value: player.volume.clamp(0, 1),
               onChanged: (v) => player.setVolume(v),
             ),

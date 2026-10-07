@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../api/source_management.dart';
@@ -6,13 +7,12 @@ import '../models/models.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/glass.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_controls.dart';
 import 'queue_actions.dart';
 
-/// Header + drag chrome shared by the aux sheets (mirrors the SwiftUI
-/// `.presentationDetents` / `.presentationDragIndicator` sheet look).
+/// The sheet owns the glass and drag handle; content has a transparent Material.
 Widget _sheetFrame({
   required String title,
   required ScrollController controller,
@@ -20,78 +20,31 @@ Widget _sheetFrame({
   List<Widget>? actions,
 }) {
   return Builder(
-    builder: (context) => GlassSurface(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-      blur: 34,
-      tint: Theme.of(context).brightness == Brightness.dark
-          ? const Color.fromRGBO(24, 21, 28, 0.72)
-          : const Color.fromRGBO(255, 255, 255, 0.74),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-                color: MX.dimSoft, borderRadius: BorderRadius.circular(2)),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-            child: Row(
-              children: [
-                Text(title,
-                    style: TextStyle(
-                        color: MX.fg,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700)),
-                const Spacer(),
-                if (actions != null) ...actions,
-                TextButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: Text('关闭', style: TextStyle(color: MX.ember)),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: MX.line),
-          Expanded(child: Scrollbar(controller: controller, child: body)),
-        ],
-      ),
-    ),
-  );
+      builder: (context) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                child: Row(children: [
+                  Text(title,
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  if (actions != null) ...actions,
+                  TextButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      child: Text('关闭', style: TextStyle(color: MX.ember))),
+                ]),
+              ),
+              Divider(height: 1, color: MX.line),
+              Expanded(child: Scrollbar(controller: controller, child: body)),
+            ],
+          ));
 }
 
-/// Present one of the aux sheets as a rounded modal bottom sheet.
-Future<void> showAuxSheet(BuildContext context, Widget sheet) {
-  return showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.5),
-    builder: (_) => DraggableScrollableSheet(
-      initialChildSize: 0.62,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (_, controller) =>
-          _SheetControllerScope(controller: controller, child: sheet),
-    ),
-  );
-}
-
-/// Provides the DraggableScrollableSheet's controller to the sheet body.
-class _SheetControllerScope extends InheritedWidget {
-  final ScrollController controller;
-  const _SheetControllerScope({required this.controller, required super.child});
-
-  static ScrollController of(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<_SheetControllerScope>()!
-      .controller;
-
-  @override
-  bool updateShouldNotify(_SheetControllerScope oldWidget) =>
-      controller != oldWidget.controller;
-}
+Future<void> showAuxSheet(BuildContext context, Widget sheet) =>
+    showMusicGlassSheet(context, sheet);
 
 // __APPEND_QUEUE_SHEET__
 
@@ -101,7 +54,7 @@ class QueueSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = _SheetControllerScope.of(context);
+    final controller = ScrollControllerProvider.of(context)!.controller;
     final player = context.watch<PlayerStore>();
     final queue = player.queue;
     return _sheetFrame(
@@ -276,7 +229,7 @@ class _SourceSheetState extends State<SourceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = _SheetControllerScope.of(context);
+    final controller = ScrollControllerProvider.of(context)!.controller;
     final ui = context.watch<UIStore>();
     final session = context.watch<SessionStore>();
     final player = context.watch<PlayerStore>();
@@ -508,7 +461,7 @@ class _PlaylistPickerSheetState extends State<PlaylistPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = _SheetControllerScope.of(context);
+    final controller = ScrollControllerProvider.of(context)!.controller;
     final ui = context.watch<UIStore>();
     final head = ui.pickerTrack;
 

@@ -7,7 +7,6 @@ import '../models/models.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/glass.dart';
 import '../theme/bottom_chrome.dart';
 import '../theme/player_glass.dart';
 import '../theme/route.dart';
@@ -338,12 +337,14 @@ class _Toast extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCapsule(
-      child: Text(
-        text,
-        style:
-            TextStyle(color: MX.fg, fontSize: 14, fontWeight: FontWeight.w500),
-      ),
+    return GlassToast(
+      key: ValueKey(text),
+      message: text,
+      type: GlassToastType.neutral,
+      position: GlassToastPosition.top,
+      dismissible: false,
+      quality: GlassQuality.standard,
+      settings: playerGlassSettings(context).copyWith(blur: 18),
     );
   }
 }

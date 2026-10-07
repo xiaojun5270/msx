@@ -7,7 +7,7 @@ import '../api/auth_box.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/player_glass.dart';
+import 'glass_surfaces.dart';
 import '../theme/theme.dart';
 
 /// Collapsible floating player with artwork refraction and full transport.
@@ -50,11 +50,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
             if (velocity < -180 && !expanded) ui.setPlayerExpanded(true);
             if (velocity > 180 && expanded) ui.setPlayerExpanded(false);
           },
-          child: GlassContainer(
-            shape: LiquidRoundedSuperellipse(borderRadius: expanded ? 28 : 34),
-            useOwnLayer: true,
+          child: MusicGlassPanel(
+            radius: expanded ? 28 : 34,
             quality: GlassQuality.premium,
-            settings: playerGlassSettings(context),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,
@@ -238,7 +236,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
                       overlayShape:
                           const RoundSliderOverlayShape(overlayRadius: 12),
                     ),
-                    child: Slider(
+                    child: MusicGlassSlider(
+                      label: '播放进度',
                       value: current,
                       max: duration > 0 ? duration : 1,
                       onChanged: duration > 0 ? player.seek : null,

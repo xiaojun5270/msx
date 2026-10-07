@@ -19,8 +19,15 @@ if (flutterVersionCode == null) {
 
 def flutterVersionName = localProperties.getProperty('flutter.versionName')
 if (flutterVersionName == null) {
-    flutterVersionName = '1.0'
+    flutterVersionName = '0.7.8'
 }
+
+def versionProperties = new Properties()
+rootProject.file('version.properties').withInputStream { versionProperties.load(it) }
+def versionCodeOffset = versionProperties.getProperty('versionCodeOffset').toInteger()
+def buildSequence = flutterVersionCode.toInteger()
+if (buildSequence < 1) throw new GradleException('Build sequence must be positive.')
+def displayVersion = "${flutterVersionName}(${String.format('%03d', buildSequence)})"
 
 def signingProperties = new Properties()
 def signingPropertiesFile = rootProject.file('key.properties')
@@ -65,8 +72,8 @@ android {
         applicationId = "com.musix.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = flutterVersionCode.toInteger()
-        versionName = flutterVersionName
+        versionCode = versionCodeOffset + buildSequence
+        versionName = displayVersion
     }
 
     signingConfigs {

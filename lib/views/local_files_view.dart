@@ -8,6 +8,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 String _enc(String s) => Uri.encodeComponent(s);
 
@@ -86,9 +87,7 @@ class _LocalFilesViewState extends State<LocalFilesView> {
     final ui = context.read<UIStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text(_title, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
           if (_audios.isNotEmpty)

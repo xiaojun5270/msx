@@ -1121,10 +1121,7 @@ class _HomeSongRow extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.more_horiz, color: MX.mute),
-              onPressed: () => showTrackActions(context, track),
-            ),
+            TrackActionsMenu(track: track),
           ],
         ),
       ),

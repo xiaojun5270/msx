@@ -9,6 +9,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 // ---------------------------------------------------------------------------
 // LibraryView — category list + recently added grid. Mirrors Swift `LibraryView`.
@@ -185,8 +186,7 @@ class _LibraryViewState extends State<LibraryView> {
     final mine = item.removeKind == _RecentRemoveKind.minePlaylist;
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('从资料库删除「${item.title}」？', style: TextStyle(color: MX.fg, fontSize: 17)),
         content: Text(mine ? '将删除此播放列表。' : '将从资料库移除，不会删除平台上的内容。',
             style: TextStyle(color: MX.dim)),
@@ -208,9 +208,7 @@ class _LibraryViewState extends State<LibraryView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('资料库', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold, fontSize: 26)),
       ),
       body: RefreshIndicator(
@@ -497,8 +495,7 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
     final ctrl = TextEditingController();
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('新建歌单', style: TextStyle(color: MX.fg)),
         content: TextField(
           controller: ctrl,
@@ -582,8 +579,7 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
   void _confirmRemove(String title, bool isMine, VoidCallback action) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('从资料库删除「$title」？', style: TextStyle(color: MX.fg, fontSize: 17)),
         content: Text(isMine ? '将删除此播放列表。' : '将从资料库移除，不会删除平台上的内容。', style: TextStyle(color: MX.dim)),
         actions: [
@@ -618,9 +614,7 @@ class _LibraryBrowseViewState extends State<LibraryBrowseView> {
     final player = context.read<PlayerStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text(_title, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
           if (section == LibrarySection.playlists)
@@ -906,8 +900,7 @@ class _RecentsViewState extends State<RecentsView> {
   void _confirmClear() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('清空最近播放？', style: TextStyle(color: MX.fg)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
@@ -960,9 +953,7 @@ class _RecentsViewState extends State<RecentsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('最近播放', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
           if (!_isEmpty && !_loading) ...[

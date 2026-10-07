@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/theme.dart';
+import 'glass_surfaces.dart';
 
 /// Temporary scaffolding for screens not yet ported. Tasks #9–#11 replace each
 /// of these with the real view (same class name, so the shell/route mapper need
@@ -32,8 +33,7 @@ class PlaceholderScreen extends StatelessWidget {
     if (!appBar) return body;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         foregroundColor: MX.fg,
         title: Text(title),
       ),

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../api/auth_box.dart';
@@ -10,6 +11,7 @@ import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
+import 'glass_controls.dart';
 
 /// Format seconds as m:ss. Mirrors Swift `fmt`.
 String fmt(double sec) {
@@ -326,83 +328,91 @@ class CatalogTrackRow extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            onPressed: () => showTrackActions(context, track, onRemove: onRemove),
-            icon: Icon(Icons.more_horiz, color: MX.mute),
-          ),
+          TrackActionsMenu(track: track, onRemove: onRemove),
         ],
       ),
     );
   }
 }
 
-/// Present the track action sheet. Mirrors Swift `TrackActions` context menu.
-void showTrackActions(BuildContext context, Track track,
+List<MusicMenuAction> _trackActions(BuildContext context, Track track,
     {VoidCallback? onDelete, void Function(Track)? onRemove}) {
   final player = context.read<PlayerStore>();
   final ui = context.read<UIStore>();
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: MX.panel,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (sheetContext) {
-      Widget item(String label, IconData icon, VoidCallback onTap, {bool destructive = false}) {
-        final color = destructive ? const Color(0xFFE0434F) : MX.fg;
-        return ListTile(
-          leading: Icon(icon, color: color),
-          title: Text(label, style: TextStyle(color: color)),
-          onTap: () {
-            Navigator.pop(sheetContext);
-            onTap();
-          },
-        );
-      }
+  return [
+    MusicMenuAction('下一首播放', Icons.playlist_play, () => player.playNext(track)),
+    MusicMenuAction('加入队列', Icons.queue_music, () => player.enqueue(track)),
+    MusicMenuAction(
+        '收藏', Icons.favorite_border, () => player.toggleFavorite(track)),
+    MusicMenuAction('加入歌单', Icons.playlist_add, () => ui.openPicker(track)),
+    MusicMenuAction('换源', Icons.swap_horiz, () => ui.openSource(track)),
+    MusicMenuAction(
+        '整理音源', Icons.auto_fix_high, () => ui.openOrganization([track])),
+    if (onRemove != null)
+      MusicMenuAction(
+          '从歌单移除', Icons.remove_circle_outline, () => onRemove(track),
+          destructive: true),
+    if (onDelete != null)
+      MusicMenuAction('删除记录', Icons.delete_outline, onDelete,
+          destructive: true),
+  ];
+}
 
-      return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: Row(
-                children: [
-                  CoverArt(src: track.cover, size: 44, corner: 6),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(track.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: MX.fg, fontWeight: FontWeight.w600)),
-                        Text(track.artistText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: MX.dim, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: MX.line, height: 1),
-            item('下一首播放', Icons.playlist_play, () => player.playNext(track)),
-            item('加入队列', Icons.queue_music, () => player.enqueue(track)),
-            item('收藏', Icons.favorite_border, () => player.toggleFavorite(track)),
-            item('加入歌单', Icons.playlist_add, () => ui.openPicker(track)),
-            item('换源', Icons.swap_horiz, () => ui.openSource(track)),
-            item('整理音源', Icons.auto_fix_high, () => ui.openOrganization([track])),
-            if (onRemove != null)
-              item('从歌单移除', Icons.remove_circle_outline, () => onRemove(track), destructive: true),
-            if (onDelete != null)
-              item('删除记录', Icons.delete_outline, onDelete, destructive: true),
-          ],
-        ),
+class TrackActionsMenu extends StatelessWidget {
+  final Track track;
+  final VoidCallback? onDelete;
+  final void Function(Track)? onRemove;
+  const TrackActionsMenu(
+      {super.key, required this.track, this.onDelete, this.onRemove});
+
+  @override
+  Widget build(BuildContext context) => MusicActionsMenu(
+        title: track.title,
+        actions: _trackActions(context, track,
+            onDelete: onDelete, onRemove: onRemove),
       );
-    },
-  );
+}
+
+/// Long presses keep a roomy sheet; the visible ellipsis uses the anchored menu.
+void showTrackActions(BuildContext context, Track track,
+    {VoidCallback? onDelete, void Function(Track)? onRemove}) async {
+  final actions =
+      _trackActions(context, track, onDelete: onDelete, onRemove: onRemove);
+  VoidCallback? selected;
+  await showMusicGlassSheet(context, Builder(builder: (sheetContext) {
+    final controller = ScrollControllerProvider.of(sheetContext)!.controller;
+    return Column(children: [
+      ListTile(
+        leading: CoverArt(src: track.cover, size: 44, corner: 6),
+        title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(track.artistText,
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: IconButton(
+            tooltip: '关闭',
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(sheetContext)),
+      ),
+      Expanded(
+          child: ListView(
+        controller: controller,
+        children: [
+          for (final action in actions)
+            ListTile(
+              leading: Icon(action.icon,
+                  color: action.destructive ? Colors.red : MX.fg),
+              title: Text(action.title,
+                  style: TextStyle(
+                      color: action.destructive ? Colors.red : MX.fg)),
+              onTap: () {
+                selected = action.onTap;
+                Navigator.pop(sheetContext);
+              },
+            ),
+        ],
+      )),
+    ]);
+  }));
+  if (context.mounted) selected?.call();
 }
 
 /// Muted-artwork gradient backdrop. Mirrors Swift `ArtworkBackdrop`.
@@ -696,69 +706,35 @@ class CollectionHero extends StatelessWidget {
   }
 }
 
-/// A segmented chip bar. Mirrors Swift `SegmentBar` (multi-select-off toggle).
-/// Horizontal filter chips. Mirrors Swift `ChipBar` (single-select, always
-/// keeps a selection). Same shape as [SegmentBar] but never clears on re-tap.
+/// Single-selection categories. Re-tapping never creates an invalid empty kind.
 class ChipBar extends StatelessWidget {
   final List<(String, String)> items;
   final String selected;
   final ValueChanged<String> onChanged;
-  const ChipBar({super.key, required this.items, required this.selected, required this.onChanged});
+  const ChipBar(
+      {super.key,
+      required this.items,
+      required this.selected,
+      required this.onChanged});
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final (id, title) in items)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(title),
-                selected: selected == id,
-                onSelected: (_) => onChanged(id),
-                selectedColor: MX.ember.withOpacity(0.2),
-                labelStyle: TextStyle(color: selected == id ? MX.ember : MX.mute),
-                backgroundColor: MX.fill,
-                side: BorderSide(color: MX.line),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      GlassFilterBar(items: items, selected: selected, onChanged: onChanged);
 }
 
 class SegmentBar extends StatelessWidget {
   final List<(String, String)> items;
   final String selected;
   final ValueChanged<String> onChanged;
-  const SegmentBar({super.key, required this.items, required this.selected, required this.onChanged});
+  const SegmentBar(
+      {super.key,
+      required this.items,
+      required this.selected,
+      required this.onChanged});
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final (id, title) in items)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(title),
-                selected: selected == id,
-                onSelected: (_) => onChanged(selected == id ? '' : id),
-                selectedColor: MX.ember.withOpacity(0.2),
-                labelStyle: TextStyle(color: selected == id ? MX.ember : MX.mute),
-                backgroundColor: MX.fill,
-                side: BorderSide(color: MX.line),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      GlassFilterBar(items: items, selected: selected, onChanged: onChanged);
 }
 
 /// Skeleton placeholder bar. Mirrors Swift `SkeletonBar` (with pulse).

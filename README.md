@@ -34,7 +34,9 @@ Release 构建使用同一份 PKCS12 密钥，禁止回退到临时 debug 签名
 - `ANDROID_KEY_ALIAS`：别名。
 - `ANDROID_KEY_PASSWORD`：私钥密码。
 
-构建后使用 `apksigner verify` 校验 APK，并与 `android/signing-certificate.sha256` 的固定公钥指纹比较，签名不一致不会上传或发布。版本号使用 `github.run_number` 自动递增。
+构建后使用 `apksigner verify` 校验 APK，并与 `android/signing-certificate.sha256` 的固定公钥指纹比较，签名不一致不会上传或发布。
+
+显示版本从 `0.7.8(001)` 开始，后续新构建依次为 `0.7.8(002)`、`0.7.8(003)`。括号内序号为工作流 `github.run_number` 减去 `android/version.properties` 的固定基数 42，至少补齐三位；失败或取消的构建也占用序号，重跑同次构建不变。Android 内部 `versionCode` 仍为序号加 42，以兼容之前已发布的 APK。不要重置该基数。设置页、APK 系统信息和 Release 标题使用同一显示版本。主版本只在修改 `pubspec.yaml` 时改变。
 
 本地构建从被 Git 忽略的 `android/key.properties` 读取 `storeFile`（绝对路径）、`storePassword`、`keyAlias` 和 `keyPassword`，也可以使用对应的 `ANDROID_KEYSTORE_PATH`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 环境变量。不要提交密钥库或密码文件。
 

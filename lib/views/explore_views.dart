@@ -8,6 +8,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 String _enc(String s) => Uri.encodeComponent(s);
 
@@ -54,9 +55,7 @@ class _GenresViewState extends State<GenresView> {
     final ui = context.read<UIStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('曲风', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
@@ -286,9 +285,7 @@ class _GenreDetailViewState extends State<GenreDetailView> {
     final artists = r?.artists ?? [];
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text(r?.genre?.name ?? '曲风推荐', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
@@ -531,9 +528,7 @@ class _DailyViewState extends State<DailyView> {
     final player = context.read<PlayerStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('每日歌曲', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
           if (_shown.isNotEmpty)
@@ -602,9 +597,7 @@ class _ExplorePlaylistsViewState extends State<ExplorePlaylistsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('歌单', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
@@ -698,9 +691,7 @@ class _ExploreAlbumsViewState extends State<ExploreAlbumsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('新发行', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
@@ -844,9 +835,7 @@ class _FavoritesViewState extends State<FavoritesView> {
     final ui = context.read<UIStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('收藏', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
           if (_tab == 'track' && _tracks.isNotEmpty)

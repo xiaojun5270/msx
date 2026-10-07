@@ -7,6 +7,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 class _SyncResult {
   final bool ok;
@@ -110,8 +111,7 @@ class _SubscriptionsViewState extends State<SubscriptionsView> {
   void _confirmDelete(Subscription sub) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('取消订阅', style: TextStyle(color: MX.fg)),
         content: Text('确定取消订阅「${sub.title}」？', style: TextStyle(color: MX.dim)),
         actions: [
@@ -141,9 +141,7 @@ class _SubscriptionsViewState extends State<SubscriptionsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('订阅', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
@@ -429,7 +427,7 @@ class _SettingsDrawerState extends State<_SettingsDrawer> {
               const SizedBox(width: 8),
               Text(title, style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
               const Spacer(),
-              Switch(
+              MusicGlassSwitch(
                 value: enabled,
                 activeColor: MX.ember,
                 onChanged: _busy ? null : onToggle,
@@ -576,9 +574,7 @@ class _SubscriptionDetailViewState extends State<SubscriptionDetailView> {
     final sub = _sub;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text(sub?.title ?? '订阅详情',
             maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
@@ -620,8 +616,7 @@ class _SubscriptionDetailViewState extends State<SubscriptionDetailView> {
   void _confirmDelete() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('取消订阅', style: TextStyle(color: MX.fg)),
         content: Text('确定取消订阅「${_sub?.title ?? ''}」？', style: TextStyle(color: MX.dim)),
         actions: [
@@ -953,7 +948,7 @@ class _SubscriptionDetailViewState extends State<SubscriptionDetailView> {
               const SizedBox(width: 8),
               Text(title, style: TextStyle(color: MX.fg, fontSize: 16, fontWeight: FontWeight.w600)),
               const Spacer(),
-              Switch(value: enabled, activeColor: MX.ember, onChanged: _busy ? null : onToggle),
+              MusicGlassSwitch(value: enabled, activeColor: MX.ember, onChanged: _busy ? null : onToggle),
             ],
           ),
           if (enabled) ...[

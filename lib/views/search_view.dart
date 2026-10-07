@@ -6,11 +6,12 @@ import '../stores/player_store.dart';
 import '../stores/search_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_controls.dart';
 import 'search_results_view.dart';
+import 'glass_surfaces.dart';
 
 /// The search tab. Mirrors Swift `SearchView` / `SpotlightSearchContent`:
 /// a search field over a suggestion list (history, local matches, an inline
@@ -67,9 +68,7 @@ class _SearchViewState extends State<SearchView> {
     final store = _store;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         toolbarHeight: 72,
         titleSpacing: 20,
         title: Row(
@@ -108,48 +107,16 @@ class _SearchViewState extends State<SearchView> {
   Widget _searchField(SearchStore store) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(18),
-        blur: 26,
-        showShadow: false,
-        padding: EdgeInsets.zero,
-        child: TextField(
-          controller: _controller,
-          style: TextStyle(
-              color: MX.fg, fontSize: 16, fontWeight: FontWeight.w500),
-          textInputAction: TextInputAction.search,
-          onChanged: (text) {
-            store.edit(text);
-            setState(() => _showMorePlatforms = false);
-          },
-          onSubmitted: (_) {
-            store.submitDefault();
-            if (store.mode != SearchMode.suggestions) _openResults();
-          },
-          decoration: InputDecoration(
-            hintText: '歌曲、艺人、专辑、歌单或分享链接',
-            hintStyle: TextStyle(color: MX.dim, fontSize: 14),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(left: 5),
-              child: Icon(Icons.search_rounded, color: MX.ember, size: 23),
-            ),
-            suffixIcon: store.query.isEmpty
-                ? Icon(Icons.graphic_eq_rounded, color: MX.dimSoft, size: 19)
-                : IconButton(
-                    tooltip: '清除',
-                    onPressed: () {
-                      _controller.clear();
-                      store.edit('');
-                      setState(() => _showMorePlatforms = false);
-                    },
-                    icon: Icon(Icons.close_rounded, color: MX.dim, size: 19),
-                  ),
-            filled: true,
-            fillColor: Colors.transparent,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 17),
-          ),
-        ),
+      child: MusicSearchField(
+        controller: _controller,
+        onChanged: (text) {
+          store.edit(text);
+          setState(() => _showMorePlatforms = false);
+        },
+        onSubmitted: (_) {
+          store.submitDefault();
+          if (store.mode != SearchMode.suggestions) _openResults();
+        },
       ),
     );
   }

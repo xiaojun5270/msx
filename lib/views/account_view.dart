@@ -7,6 +7,7 @@ import '../stores/ui_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 /// The profile tab. Mirrors Swift `AccountView`: an account hero, custom
 /// playlists, library shortcuts, management shortcuts, and platform playlists.
@@ -107,9 +108,7 @@ class _AccountViewState extends State<AccountView> {
     final ui = context.read<UIStore>();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('我的',
             style: TextStyle(
                 color: MX.fg, fontWeight: FontWeight.bold, fontSize: 26)),

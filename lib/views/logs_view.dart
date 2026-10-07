@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/theme.dart';
+import 'glass_surfaces.dart';
 
 String _enc(String s) => Uri.encodeComponent(s);
 
@@ -158,9 +159,7 @@ class _ServerLogsViewState extends State<ServerLogsView> {
     final isAdmin = context.read<SessionStore>().role == 'admin';
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('服务日志', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
         actions: [
           _filterMenu(),
@@ -362,8 +361,7 @@ class _ClientLogsViewState extends State<ClientLogsView> {
     final ui = context.read<UIStore>();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('清空本地日志？', style: TextStyle(color: MX.fg)),
         content: Text('仅清除本机客户端日志，不影响服务端日志。', style: TextStyle(color: MX.dim)),
         actions: [
@@ -396,9 +394,7 @@ class _ClientLogsViewState extends State<ClientLogsView> {
         final logs = _logs;
         return Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
+          appBar: MusicGlassAppBar(
             title: Text('客户端日志', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
             actions: [
               _filterMenu(),

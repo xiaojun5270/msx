@@ -9,6 +9,7 @@ import '../stores/session_store.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'ingest_records_view.dart';
+import 'glass_surfaces.dart';
 
 String _pc(String v) => Uri.encodeComponent(v);
 
@@ -60,9 +61,7 @@ class _SourceRunsViewState extends State<SourceRunsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('音源整理记录', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
@@ -230,9 +229,7 @@ class _SourceOrganizationViewState extends State<SourceOrganizationView> {
     final run = _run;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         title: Text('整理音源', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
@@ -315,7 +312,7 @@ class _SourceOrganizationViewState extends State<SourceOrganizationView> {
                     ],
                   ),
                 ),
-                Switch(
+                MusicGlassSwitch(
                   value: _backgroundIngest,
                   activeColor: MX.ember,
                   onChanged: _busy ? null : (v) => setState(() => _backgroundIngest = v),

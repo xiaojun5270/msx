@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -15,20 +16,22 @@ import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
+import '../theme/player_glass.dart';
 import 'components.dart';
+import 'glass_surfaces.dart';
 
 // ===========================================================================
 // Shared building blocks — mirror the private helpers in Swift SettingsViews.
 // ===========================================================================
 
-/// Unframed section content shared by all settings pages.
+/// Separate the glass card surface from its interactive form controls.
 class _Card extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => MusicGlassPanel(
         padding: padding,
         child: SizedBox(
           width: double.infinity,
@@ -171,10 +174,8 @@ Widget _chipWrap(List<Widget> chips) =>
 Widget _settingsScaffold(String title, Widget body, {List<Widget>? actions}) =>
     Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
+      appBar: MusicGlassAppBar(
         foregroundColor: MX.fg,
-        elevation: 0,
         title: Text(title,
             style: TextStyle(color: MX.fg, fontWeight: FontWeight.w700)),
         actions: actions,
@@ -268,7 +269,8 @@ class _SettingsViewState extends State<SettingsView> {
     if (mounted) setState(() {});
   }
 
-  String get _appVersion => '1.0.0';
+  String get _appVersion => const String.fromEnvironment(
+      'APP_DISPLAY_VERSION', defaultValue: '0.7.8(001)');
 
   String get _serverSubtitle {
     final uri = Uri.tryParse(context.read<SessionStore>().baseURL);
@@ -301,8 +303,7 @@ class _SettingsViewState extends State<SettingsView> {
   Future<void> _confirmLogout() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('退出登录？', style: TextStyle(color: MX.fg)),
         content: Text('将清除本机会话并返回登录页。', style: TextStyle(color: MX.dim)),
         actions: [
@@ -400,28 +401,14 @@ class _SettingsViewState extends State<SettingsView> {
   // -- section + row builders -----------------------------------------------
 
   Widget _group({String? header, String? footer, required List<Widget> rows}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (header != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Text(header,
-                    style: TextStyle(
-                        color: MX.mute,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-              ),
-            _Card(padding: EdgeInsets.zero, child: Column(children: rows)),
-            if (footer != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 4, top: 8),
-                child: Text(footer,
-                    style: TextStyle(color: MX.mute, fontSize: 12)),
-              ),
-          ],
+      Padding(padding: const EdgeInsets.only(bottom: 24),
+        child: GlassGroupedSection(
+          header: header == null ? null : Text(header, style: TextStyle(color: MX.mute)),
+          footer: footer == null ? null : Text(footer, style: TextStyle(color: MX.mute)),
+          margin: EdgeInsets.zero,
+          settings: playerGlassSettings(context),
+          quality: GlassQuality.standard, useOwnLayer: true,
+          children: [Column(children: rows)],
         ),
       );
 
@@ -467,37 +454,15 @@ class _SettingsViewState extends State<SettingsView> {
 
   Widget _navRow(IconData icon, String title, String subtitle, Color tint,
           VoidCallback onTap) =>
-      InkWell(
+      GlassListTile(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                    color: tint, borderRadius: BorderRadius.circular(7)),
-                child: Icon(icon, size: 16, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(color: MX.fg, fontSize: 15)),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: MX.mute, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, size: 20, color: MX.dimSoft),
-            ],
-          ),
-        ),
+        leading: Container(width: 28, height: 28,
+          decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(7)),
+          child: Icon(icon, size: 16, color: Colors.white)),
+        title: Text(title, style: TextStyle(color: MX.fg, fontSize: 15)),
+        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: MX.mute, fontSize: 12)),
+        trailing: Icon(Icons.chevron_right, size: 20, color: MX.dimSoft),
       );
 
   Widget _platformRow(String id) {
@@ -1260,8 +1225,7 @@ class _AutomationViewState extends State<AutomationView> {
 
   Future<bool?> _confirm(String title, String message) => showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: MX.panel,
+        builder: (ctx) => MusicGlassDialog(
           title: Text(title, style: TextStyle(color: MX.fg)),
           content: Text(message, style: TextStyle(color: MX.dim)),
           actions: [
@@ -1299,7 +1263,7 @@ class _AutomationViewState extends State<AutomationView> {
         children: [
           Expanded(
               child: Text(label, style: TextStyle(color: MX.fg, fontSize: 15))),
-          Switch(
+          MusicGlassSwitch(
             value: value,
             activeColor: MX.ember,
             onChanged: onChanged,
@@ -1841,8 +1805,7 @@ class _PlatformSettingsViewState extends State<PlatformSettingsView> {
 
   Future<bool?> _confirm(String title, String message) => showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: MX.panel,
+        builder: (ctx) => MusicGlassDialog(
           title: Text(title, style: TextStyle(color: MX.fg)),
           content: Text(message, style: TextStyle(color: MX.dim)),
           actions: [
@@ -2119,7 +2082,7 @@ class _PlatformSettingsViewState extends State<PlatformSettingsView> {
                 Expanded(
                     child: Text('启用',
                         style: TextStyle(color: MX.fg, fontSize: 15))),
-                Switch(
+                MusicGlassSwitch(
                     value: _schEnabled,
                     activeColor: MX.ember,
                     onChanged: (v) => setState(() => _schEnabled = v)),
@@ -2300,8 +2263,7 @@ class _CustomSourcesViewState extends State<CustomSourcesView> {
   Future<void> _remove(LxSourceSummary s) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MX.panel,
+      builder: (ctx) => MusicGlassDialog(
         title: Text('删除这个自定义音源？', style: TextStyle(color: MX.fg)),
         actions: [
           TextButton(
