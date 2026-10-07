@@ -153,14 +153,25 @@ class _MusicActionsMenuState extends State<MusicActionsMenu> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final media = MediaQuery.of(context);
+    final textScale = media.textScaler.scale(1).clamp(1.0, 2.0);
+    final itemHeight = 52.0 * textScale;
+    final availableHeight = (media.size.height -
+            media.padding.vertical -
+            media.viewInsets.bottom -
+            32)
+        .clamp(120.0, double.infinity);
     return GlassMenu(
       controller: _controller,
       onClose: _onClose,
       autoAdjustToScreen: true,
       menuPadding: const EdgeInsets.all(12),
-      menuWidth: 248,
-      menuHeight: (widget.actions.length * 44.0 + (widget.title == null ? 0 : 38))
-          .clamp(0.0, MediaQuery.sizeOf(context).height * 0.65),
+      menuWidth: (media.size.width - 32).clamp(200.0, 320.0),
+      menuBorderRadius: 22,
+      itemBorderRadius: 12,
+      menuHeight: (widget.actions.length * itemHeight +
+              (widget.title == null ? 20 : 76 * textScale))
+          .clamp(0.0, availableHeight),
       quality: GlassQuality.standard,
       settings: playerGlassSettings(context).copyWith(blur: 18),
       triggerBuilder: (_, __) => IconButton(
@@ -172,16 +183,18 @@ class _MusicActionsMenuState extends State<MusicActionsMenu> {
       items: [
         if (widget.title != null)
           Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
               child: Text(widget.title!,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: scheme.onSurfaceVariant,
-                      fontSize: 12,
+                      fontSize: 13,
                       decoration: TextDecoration.none))),
         for (final action in widget.actions)
           GlassMenuItem(
+            height: itemHeight,
+            maxLines: 2,
             title: action.title,
             icon: Icon(action.icon),
             isDestructive: action.destructive,

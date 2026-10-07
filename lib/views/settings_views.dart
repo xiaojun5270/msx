@@ -16,8 +16,8 @@ import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
-import '../theme/player_glass.dart';
 import 'components.dart';
+import 'route_page.dart';
 import 'glass_surfaces.dart';
 
 // ===========================================================================
@@ -206,6 +206,8 @@ class _SettingsViewState extends State<SettingsView> {
   ];
 
   Map<String, BindingSummary> _bindings = {};
+  bool _bindingsLoading = true;
+  bool _bindingsFailed = false;
   Map<String, ServiceInfo> _services = {};
   String? _serverVersion;
   PlaylistHealthConfig? _health;
@@ -218,6 +220,7 @@ class _SettingsViewState extends State<SettingsView> {
     super.initState();
     _backgroundUrls.text =
         context.read<SessionStore>().local.prefs.backgroundImageUrls;
+    _bindings = Map.of(context.read<SessionStore>().bindings);
     WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
   }
 
@@ -237,36 +240,47 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Future<void> _reload() async {
-    final api = context.read<SessionStore>().api;
     final session = context.read<SessionStore>();
-    try {
-      final box = await api.getJson('/api/me/bindings', BindingsBox.fromJson);
-      _bindings = box.bindings ?? {};
-      session.bindings = _bindings;
-    } catch (_) {}
-    try {
-      final box =
-          await api.getJson('/api/settings/services', ServicesBox.fromJson);
-      _services = box.services ?? {};
-    } catch (_) {}
-    try {
-      _serverVersion =
-          (await api.getJson('/api/version', VersionInfo.fromJson)).version;
-    } catch (_) {}
-    try {
-      final box =
-          await api.getJson('/api/subscriptions', SubscriptionsBox.fromJson);
-      _subscriptionCount = box.items?.length ?? 0;
-    } catch (_) {}
-    try {
-      _health = await api.getJson(
-          '/api/settings/playlist-health', PlaylistHealthConfig.fromJson);
-    } catch (_) {}
-    try {
-      _cookie = await api.getJson('/api/settings/services/cookiecloud/config',
-          CookieCloudConfig.fromJson);
-    } catch (_) {}
-    if (mounted) setState(() {});
+    final api = session.api;
+    setState(() { _bindingsLoading = true; _bindingsFailed = false; });
+    Future<void> load(Future<void> Function() action) async {
+      try { await action(); } catch (_) {}
+    }
+    await Future.wait([
+      () async {
+        try {
+          final box = await api.getJson('/api/me/bindings', BindingsBox.fromJson);
+          if (!mounted) return;
+          setState(() {
+            _bindings = box.bindings ?? {};
+            session.bindings = _bindings;
+            _bindingsLoading = false;
+          });
+        } catch (_) {
+          if (mounted) setState(() { _bindingsLoading = false; _bindingsFailed = true; });
+        }
+      }(),
+      load(() async {
+        final box = await api.getJson('/api/settings/services', ServicesBox.fromJson);
+        if (mounted) setState(() => _services = box.services ?? {});
+      }),
+      load(() async {
+        final version = await api.getJson('/api/version', VersionInfo.fromJson);
+        if (mounted) setState(() => _serverVersion = version.version);
+      }),
+      load(() async {
+        final box = await api.getJson('/api/subscriptions', SubscriptionsBox.fromJson);
+        if (mounted) setState(() => _subscriptionCount = box.items?.length ?? 0);
+      }),
+      load(() async {
+        final health = await api.getJson('/api/settings/playlist-health', PlaylistHealthConfig.fromJson);
+        if (mounted) setState(() => _health = health);
+      }),
+      load(() async {
+        final cookie = await api.getJson('/api/settings/services/cookiecloud/config', CookieCloudConfig.fromJson);
+        if (mounted) setState(() => _cookie = cookie);
+      }),
+    ]);
   }
 
   String get _appVersion => const String.fromEnvironment(
@@ -294,11 +308,17 @@ class _SettingsViewState extends State<SettingsView> {
     final s = _services[id];
     if (s?.effectiveUrl != null && s!.effectiveUrl!.isNotEmpty)
       return s.effectiveUrl!;
+    if (_bindingsLoading) return '正在读取状态…';
+    if (_bindingsFailed) return '状态读取失败';
     if (id == 'youtube') return '未配置';
     return '未绑定';
   }
 
-  void _open(AppRoute route) => context.read<UIStore>().open(route);
+  Future<void> _open(AppRoute route) async {
+    await Navigator.of(context).push(instantPageRoute(
+      builder: (_) => RoutePage(route: route)));
+    if (mounted) await _reload();
+  }
 
   Future<void> _confirmLogout() async {
     final ok = await showDialog<bool>(
@@ -402,14 +422,13 @@ class _SettingsViewState extends State<SettingsView> {
 
   Widget _group({String? header, String? footer, required List<Widget> rows}) =>
       Padding(padding: const EdgeInsets.only(bottom: 24),
-        child: GlassGroupedSection(
-          header: header == null ? null : Text(header, style: TextStyle(color: MX.mute)),
-          footer: footer == null ? null : Text(footer, style: TextStyle(color: MX.mute)),
-          margin: EdgeInsets.zero,
-          settings: playerGlassSettings(context),
-          quality: GlassQuality.standard, useOwnLayer: true,
-          children: [Column(children: rows)],
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (header != null) Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(header, style: TextStyle(color: MX.mute))),
+          MusicGlassPanel(child: Column(children: rows)),
+          if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+            child: Text(footer, style: TextStyle(color: MX.mute))),
+        ]),
       );
 
   Widget _divider() => Padding(
@@ -504,7 +523,7 @@ class _SettingsViewState extends State<SettingsView> {
               decoration: BoxDecoration(
                   color: bound ? tone : MX.dimSoft, shape: BoxShape.circle),
             ),
-            Text(bound ? '已连接' : '未连接',
+            Text(_bindingsLoading ? '读取中' : _bindingsFailed ? '待刷新' : bound ? '已连接' : '未连接',
                 style: TextStyle(color: MX.mute, fontSize: 12)),
           ],
         ),

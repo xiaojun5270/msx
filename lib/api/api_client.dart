@@ -13,9 +13,12 @@ class APIClient {
   String _baseURL;
   String proxyCookie = '';
   void Function(String token)? onTokenChange;
-  final http.Client _http = http.Client();
+  final http.Client _http;
+  final Duration requestTimeout;
 
-  APIClient({required String baseURL}) : _baseURL = normalize(baseURL) {
+  APIClient({required String baseURL, http.Client? client,
+    this.requestTimeout = const Duration(seconds: 30)})
+      : _http = client ?? http.Client(), _baseURL = normalize(baseURL) {
     AuthBox.shared.set(base: _baseURL);
   }
 
@@ -238,8 +241,9 @@ class APIClient {
       final req = http.Request(method, target)..headers.addAll(headers);
       if (body is String) req.body = body;
       final streamed =
-          await _http.send(req).timeout(const Duration(seconds: 30));
-      resp = await http.Response.fromStream(streamed);
+          await _http.send(req).timeout(requestTimeout);
+      // Headers may arrive while the response body stalls indefinitely.
+      resp = await http.Response.fromStream(streamed).timeout(requestTimeout);
     } catch (e) {
       final error = _networkError(e, target);
       LocalLogStore.shared.error(

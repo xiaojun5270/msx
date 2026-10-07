@@ -72,11 +72,13 @@ class AppBackdrop extends StatelessWidget {
       );
     }
 
-    return Stack(
+    // Route-local controls sample only the wallpaper, never the surrounding
+    // page snapshot that already contains their own labels and selected state.
+    return liquid.LiquidGlassScope(child: Stack(
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: ClipRect(
+          child: liquid.GlassBackgroundSource(child: ClipRect(
             child: OverflowBox(
               alignment: Alignment.topCenter,
               minWidth: viewport.width,
@@ -85,11 +87,11 @@ class AppBackdrop extends StatelessWidget {
               maxHeight: viewport.height,
               child: SizedBox.fromSize(size: viewport, child: background),
             ),
-          ),
+          )),
         ),
         child,
       ],
-    );
+    ));
   }
 }
 

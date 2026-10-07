@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -48,6 +50,8 @@ class _HomeViewState extends State<HomeView> {
   List<Track> _preferenceTracks = [];
   bool _preferenceTracksLoading = true;
   int _generation = 0;
+  Future<void>? _loadTask;
+  bool _refreshing = false;
 
   @override
   void initState() {
@@ -60,7 +64,7 @@ class _HomeViewState extends State<HomeView> {
       _shelves[id] = _ShelfState(row,
           loading: row.empty, loadedAt: cached != null ? DateTime.now() : null);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runLoad());
   }
 
   ShelfRow _rowFromRaw(String id, String layout, String raw) {
@@ -100,10 +104,14 @@ class _HomeViewState extends State<HomeView> {
       }
       if (mix != null) setState(() => _dailyMix = mix);
     }
-    for (final (id, layout) in _kinds) {
-      if (gen != _generation) return;
-      await _loadShelf(id, layout, gen);
+    if (!mounted || gen != _generation) return;
+    // Load small independent batches instead of blocking eleven shelves in series.
+    for (var i = 0; i < _kinds.length; i += 4) {
+      if (!mounted || gen != _generation) return;
+      await Future.wait(_kinds.skip(i).take(4).map(
+        (kind) => _loadShelf(kind.$1, kind.$2, gen)));
     }
+    if (!mounted || gen != _generation) return;
     if (_tracksIn(_shelves['guess']).isEmpty) {
       await _loadPreferenceTracks(session, favorites, gen);
     } else if (mounted && gen == _generation) {
@@ -359,16 +367,40 @@ class _HomeViewState extends State<HomeView> {
     });
   }
 
-  Future<void> _refresh() async {
-    setState(() {
+  Future<void> _refresh() => _runLoad(refresh: true);
+
+  Future<void> _runLoad({bool refresh = false}) {
+    if (!mounted) return Future<void>.value();
+    return _loadTask ??= _loadOnce(refresh: refresh).whenComplete(() => _loadTask = null);
+  }
+
+  Future<void> _loadOnce({required bool refresh}) async {
+    if (refresh) setState(() {
+      _refreshing = true;
       _generation++;
       _preferenceTracksLoading = true;
       for (final st in _shelves.values) {
         st.loadedAt = null;
         st.failed = false;
+        st.loading = true;
       }
     });
-    await _loadAll();
+    try {
+      await _loadAll().timeout(const Duration(seconds: 30));
+    } catch (_) {
+      if (!mounted) return;
+      // Invalidate in-flight responses so stale jobs cannot overwrite a retry.
+      _generation++;
+      for (final st in _shelves.values) {
+        if (st.loading || st.loadedAt == null) st.failed = true;
+      }
+    } finally {
+      if (mounted) setState(() {
+        _refreshing = false;
+        _preferenceTracksLoading = false;
+        for (final st in _shelves.values) { st.loading = false; }
+      });
+    }
   }
 
   bool get _anyFailed => _shelves.values.any((s) => s.failed);
@@ -384,6 +416,7 @@ class _HomeViewState extends State<HomeView> {
         backgroundColor: MX.panel,
         onRefresh: _refresh,
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
@@ -543,7 +576,8 @@ class _HomeViewState extends State<HomeView> {
             child: Text('部分推荐仍在更新或暂时不可用，稍后可重试。',
                 style: TextStyle(color: MX.dim, fontSize: 12)),
           ),
-          OutlinedButton(onPressed: _refresh, child: const Text('重试')),
+          OutlinedButton(onPressed: _refreshing ? null : _refresh,
+            child: Text(_refreshing ? '刷新中…' : '重试')),
         ],
       ),
     );

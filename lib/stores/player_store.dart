@@ -14,6 +14,7 @@ import '../models/models.dart';
 import 'session_store.dart';
 import 'ui_store.dart';
 import 'widget_bridge.dart';
+import 'audio_source_loader.dart';
 
 /// The playback engine — mirrors Swift `PlayerStore`.
 ///
@@ -879,10 +880,7 @@ class PlayerStore extends ChangeNotifier {
     lyrics = [];
     _setSourceProgress(PlaybackSourcePhase.ready);
     try {
-      await _av.setAudioSource(
-        await _cachedAudioSource(retained.url, retained.headers),
-        initialPosition: Duration(milliseconds: (current * 1000).round()),
-      );
+      await _loadAudio(retained.url, retained.headers, current, mine);
     } catch (error) {
       LocalLogStore.shared.warn(
         AppLogCategory.player,
@@ -1051,7 +1049,8 @@ class PlayerStore extends ChangeNotifier {
     _recovering = recover;
     _sourceRecoveryAttempt = recoveryAttempt;
 
-    var deadline = DateTime.now().add(const Duration(minutes: 15));
+    final hardDeadline = DateTime.now().add(const Duration(seconds: 45));
+    var deadline = hardDeadline;
     final oldIntent = _playbackIntentID;
     final oldSession = _playbackSessionID;
     final intentID = _uuid();
@@ -1082,9 +1081,7 @@ class PlayerStore extends ChangeNotifier {
       if (raw != null) {
         final until = DateTime.tryParse(raw);
         if (until != null) {
-          final secs = until.difference(DateTime.now()).inMilliseconds / 1000.0;
-          deadline = DateTime.now()
-              .add(Duration(milliseconds: (secs.clamp(1, 900) * 1000).round()));
+          deadline = until.isBefore(hardDeadline) ? until : hardDeadline;
         }
       }
     }
@@ -1097,11 +1094,13 @@ class PlayerStore extends ChangeNotifier {
         if (oldIntent != null) {
           await session.api
               .delete('/api/playback/intents/$oldIntent')
+              .timeout(const Duration(seconds: 3))
               .catchError((_) {});
         }
         if (oldSession != null) {
           await session.api
               .delete('/api/playback/sessions/$oldSession')
+              .timeout(const Duration(seconds: 3))
               .catchError((_) {});
         }
       }
@@ -1119,7 +1118,8 @@ class PlayerStore extends ChangeNotifier {
         playURL = session.api.absolute(rawStream)!;
       } else {
         var result = await session.api
-            .createPlaybackSession(row, intentId: intentID, recover: recover);
+            .createPlaybackSession(row, intentId: intentID, recover: recover)
+            .timeout(const Duration(seconds: 30));
         createdSessionID = result.sessionId;
         acceptDeadline(result);
         if (result.isWaiting) {
@@ -1132,7 +1132,8 @@ class PlayerStore extends ChangeNotifier {
             mine == _token) {
           await Future.delayed(const Duration(milliseconds: 400));
           if (mine != _token || !DateTime.now().isBefore(deadline)) break;
-          result = await session.api.pollPlaybackIntent(intentID);
+          result = await session.api.pollPlaybackIntent(intentID)
+              .timeout(deadline.difference(DateTime.now()));
           createdSessionID = result.sessionId;
           acceptDeadline(result);
           if (result.isWaiting) {
@@ -1144,10 +1145,12 @@ class PlayerStore extends ChangeNotifier {
         if (mine != _token) {
           await session.api
               .delete('/api/playback/intents/$intentID')
+              .timeout(const Duration(seconds: 3))
               .catchError((_) {});
           if (result.sessionId != null) {
             await session.api
                 .delete('/api/playback/sessions/${result.sessionId}')
+              .timeout(const Duration(seconds: 3))
                 .catchError((_) {});
           }
           return;
@@ -1174,10 +1177,12 @@ class PlayerStore extends ChangeNotifier {
               : '${result.reason ?? '音源准备中'}，请重试播放或换源';
           await session.api
               .delete('/api/playback/intents/$intentID')
+              .timeout(const Duration(seconds: 3))
               .catchError((_) {});
           if (result.sessionId != null) {
             await session.api
                 .delete('/api/playback/sessions/${result.sessionId}')
+              .timeout(const Duration(seconds: 3))
                 .catchError((_) {});
           }
           if (mine != _token) return;
@@ -1206,16 +1211,8 @@ class PlayerStore extends ChangeNotifier {
       if (probe.finalUrl.host.toLowerCase() != playURL.host.toLowerCase()) {
         engineHeaders.remove('Cookie');
       }
-      final playDeadline = DateTime.now().add(const Duration(seconds: 35));
       _setSourceProgress(PlaybackSourcePhase.buffering);
-      final loadedDuration = await _av
-          .setAudioSource(
-            await _cachedAudioSource(probe.finalUrl, engineHeaders),
-            initialPosition: position > 0
-                ? Duration(milliseconds: (position * 1000).round())
-                : Duration.zero,
-          )
-          .timeout(playDeadline.difference(DateTime.now()));
+      final loadedDuration = await _loadAudio(probe.finalUrl, engineHeaders, position, mine);
       if (mine != _token) return;
       _loadedTrackKey = row.key;
       _loadedURL = probe.finalUrl;
@@ -1266,10 +1263,12 @@ class PlayerStore extends ChangeNotifier {
       );
       await session.api
           .delete('/api/playback/intents/$intentID')
+              .timeout(const Duration(seconds: 3))
           .catchError((_) {});
       if (createdSessionID != null) {
         await session.api
             .delete('/api/playback/sessions/$createdSessionID')
+              .timeout(const Duration(seconds: 3))
             .catchError((_) {});
       }
       if (mine == _token &&
@@ -1355,6 +1354,23 @@ class PlayerStore extends ChangeNotifier {
     unawaited(_pruneAudioCache(source));
     return resolved;
   }
+
+  Future<Duration?> _loadAudio(Uri url, Map<String, String> headers,
+      double position, int generation) => loadAudioWithFallback<Duration?>(
+    isCurrent: () => generation == _token,
+    cached: () async {
+      final source = await _cachedAudioSource(url, headers);
+      if (generation != _token) throw StateError('Audio request superseded');
+      return _av.setAudioSource(source,
+        initialPosition: Duration(milliseconds: (position * 1000).round()));
+    },
+    stop: () => _av.stop(),
+    direct: () => _av.setAudioSource(AudioSource.uri(url, headers: headers),
+        initialPosition: Duration(milliseconds: (position * 1000).round())),
+    onCacheFailure: (error) => LocalLogStore.shared.warn(
+      AppLogCategory.player, 'playback.cache_fallback',
+      fields: {'host': url.host, 'error': error.toString()}),
+  );
 
   Future<void> _pruneAudioCache(LockCachingAudioSource active) async {
     try {

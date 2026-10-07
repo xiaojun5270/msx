@@ -328,4 +328,43 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets(
+      'player menu has roomy rows and stays usable on a small screen with large text',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var tapped = false;
+    await tester.pumpWidget(app(Builder(
+        builder: (context) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(1.5)),
+              child: Align(
+                  alignment: Alignment.topRight,
+                  child: MusicActionsMenu(
+                    title: '很长的歌曲标题需要两行显示',
+                    actions: [
+                      for (var i = 0; i < 7; i++)
+                        MusicMenuAction('菜单操作 $i', Icons.music_note, () {
+                          if (i == 6) tapped = true;
+                        }),
+                    ],
+                  )),
+            ))));
+    await tester.tap(find.byTooltip('歌曲操作'));
+    await tester.pumpAndSettle();
+    final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
+    expect(menu.menuWidth, 320);
+    final item = tester.widget<GlassMenuItem>(find.byType(GlassMenuItem).first);
+    expect(item.height, 78);
+    await tester.ensureVisible(find.text('菜单操作 6'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('菜单操作 6'));
+    await tester.pumpAndSettle();
+    expect(tapped, isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }

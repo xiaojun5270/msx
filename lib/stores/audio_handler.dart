@@ -15,7 +15,10 @@ class MusixAudioHandler extends BaseAudioHandler {
   static const _favoriteAction = 'toggleFavorite';
 
   MusixAudioHandler(this.player) {
-    player.engine.playbackEventStream.listen((_) => _broadcastState());
+    player.engine.playbackEventStream.listen((_) => _broadcastState(),
+      // Source loading errors are handled by PlayerStore's awaited load/play.
+      // Consuming the broadcast error keeps it from escaping as a platform error.
+      onError: (Object error, StackTrace stack) => _broadcastState());
     player.favoriteChanges.listen((_) => _broadcastState());
     player.mediaItemChanges.listen((item) {
       mediaItem.add(item);
