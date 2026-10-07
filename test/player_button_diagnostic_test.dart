@@ -69,6 +69,7 @@ void main() {
       final session = _Session(await LocalStore.open());
       final ui = UIStore()..playerExpanded = expanded;
       final player = PlayerStore();
+      final originalEngine = player.engine;
       final track = Track(
           id: 'diagnostic', platform: 'kugou', title: '播放测试', artists: ['歌手']);
       player.queue = [track];
@@ -86,6 +87,8 @@ void main() {
       await tester.tap(find.byTooltip('播放'));
       await tester.pump();
       expect(session.api.playbackRequests, hasLength(1));
+      expect(player.engine, isNot(same(originalEngine)));
+      final loadingEngine = player.engine;
       expect(player.loading, isTrue);
       expect(find.byTooltip('取消加载'), findsOneWidget);
       await tester.pump(const Duration(seconds: 1));
@@ -95,6 +98,7 @@ void main() {
       await tester.tap(find.byTooltip('取消加载'));
       await tester.pump();
       expect(player.loading, isFalse);
+      expect(player.engine, isNot(same(loadingEngine)));
       session.api.response
           .complete({'status': 'failed', 'reason': 'diagnostic cancelled'});
       await tester.pump();
@@ -104,6 +108,8 @@ void main() {
       session.dispose();
       await tester.pump();
       expect(tester.takeException(), isNull);
+      // Mock platform disposal can remain pending; it must not block the UI.
+      await tester.pump(const Duration(seconds: 4));
       debugDefaultTargetPlatformOverride = null;
     });
   }

@@ -1,24 +1,20 @@
 import 'dart:async';
 
-/// A failed cache proxy must not prevent a working HTTP stream from playing.
-/// The caller provides a generation check so a cancelled load cannot replace
-/// a newer song while the cached attempt is timing out.
-Future<T> loadAudioWithFallback<T>({
-  required Future<T> Function() cached,
-  required Future<T> Function() direct,
-  required Future<void> Function() stop,
+/// Load native HTTP with a bounded wait. Discard a timed-out engine without
+/// awaiting stop() on that same blocked engine. Reject late results as well.
+Future<T> loadDirectAudio<T>({
+  required Future<T> Function() load,
   required bool Function() isCurrent,
-  required void Function(Object) onCacheFailure,
-  Duration cacheTimeout = const Duration(seconds: 12),
-  Duration directTimeout = const Duration(seconds: 20),
+  required void Function() onTimeout,
+  Duration timeout = const Duration(seconds: 20),
 }) async {
+  if (!isCurrent()) throw StateError('Audio request superseded');
   try {
-    return await cached().timeout(cacheTimeout);
-  } catch (error) {
-    if (!isCurrent()) rethrow;
-    onCacheFailure(error);
-    await stop().timeout(const Duration(seconds: 3));
+    final value = await load().timeout(timeout);
     if (!isCurrent()) throw StateError('Audio request superseded');
-    return await direct().timeout(directTimeout);
+    return value;
+  } on TimeoutException {
+    if (isCurrent()) onTimeout();
+    rethrow;
   }
 }

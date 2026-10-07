@@ -2,7 +2,7 @@
 
 MusicX 原生客户端的 Flutter 版本，目标平台 **Android**。
 
-构建使用 Flutter **3.47.4**（GitHub Actions 已固定此版本）。底部导航栏与迷你播放器使用 `liquid_glass_widgets 1.10.0`，要求 Flutter 至少 3.41.0；旧版 3.24 无法编译。玻璃效果根据设备渲染能力自动降级，播放器保留展开/收起，页面继续预留底部空间。
+构建使用 Flutter **3.47.4**（GitHub Actions 已固定此版本）。底部导航栏与迷你播放器使用 `liquid_glass_widgets 1.10.0`，要求 Flutter 至少 3.41.0；旧版 3.24 无法编译。玻璃统一使用 standard 画质，避免静止和滚动时动态切换材质。卡片使用独立实时模糊层，播放器保留展开/收起，滚动内容末尾预留防遮挡空间。
 
 ## 首次构建（Windows）
 
@@ -45,6 +45,8 @@ Release 构建使用同一份 PKCS12 密钥，禁止回退到临时 debug 签名
 请长期备份目录中的 `musix-release.p12` 和 `signing-credentials.json`。新证书无法覆盖使用旧临时证书签名的 APK，首次迁移可能需要卸载旧版（会清除本地数据）；后续版本使用固定证书可覆盖升级。
 
 ## 默认服务器
+
+播放音频直接交由原生播放器读取 HTTP 流（支持 Range 和鉴权头），不再强制通过 `LockCachingAudioSource` 本地代理。保留 3–5 分钟的原生内存预缓冲；暂不新增整首磁盘缓存。切歌与加载超时会隔离旧引擎，锁屏控制随新引擎重新绑定。
 
 `http://127.0.0.1:8080`（登录页可改）。消费 Musix Hub REST API，Cookie 鉴权 `musix_session` + 反向代理 cookie，响应信封 `{result:{status,data,error}}`。
 

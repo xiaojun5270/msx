@@ -8,59 +8,66 @@ import 'package:musix/models/models.dart';
 import 'package:musix/stores/audio_source_loader.dart';
 
 void main() {
-  test('successful cache load never starts a second source', () async {
-    final result = await loadAudioWithFallback<int>(
-      cached: () async => 7,
-      direct: () async => throw StateError('unexpected direct load'),
-      stop: () async => fail('unexpected stop'),
+  test('direct loading does not invoke cache or wait for old stop/disposal',
+      () async {
+    final blockedOldStop = Completer<void>();
+    final result = await loadDirectAudio<int>(
+      load: () async => 7,
       isCurrent: () => true,
-      onCacheFailure: (_) => fail('unexpected failure'),
+      onTimeout: () => fail('unexpected timeout'),
     );
     expect(result, 7);
+    expect(blockedOldStop.isCompleted, isFalse);
+    blockedOldStop.complete();
   });
 
-  test('cache timeout stops old source then plays the same direct source',
-      () async {
-    final events = <String>[];
+  test('timeout retires the blocked engine without awaiting stop', () async {
     final pending = Completer<int>();
-    final result = await loadAudioWithFallback<int>(
-      cached: () => pending.future,
-      direct: () async {
-        events.add('direct');
-        return 5;
-      },
-      stop: () async {
-        events.add('stop');
-      },
-      isCurrent: () => true,
-      onCacheFailure: (_) => events.add('failure'),
-      cacheTimeout: const Duration(milliseconds: 5),
-    );
-    expect(result, 5);
-    expect(events, ['failure', 'stop', 'direct']);
+    var retired = false;
+    await expectLater(
+        loadDirectAudio<int>(
+          load: () => pending.future,
+          isCurrent: () => true,
+          onTimeout: () => retired = true,
+          timeout: const Duration(milliseconds: 5),
+        ),
+        throwsA(isA<TimeoutException>()));
+    expect(retired, isTrue);
     pending.complete(1);
   });
 
-  test('a cancelled request never stops or replaces a newer song', () async {
-    await expectLater(
-        loadAudioWithFallback<int>(
-          cached: () async => throw StateError('old load failed'),
-          direct: () async => throw StateError('must not load'),
-          stop: () async => fail('must not stop'),
-          isCurrent: () => false,
-          onCacheFailure: (_) => fail('must not retry'),
-        ),
-        throwsStateError);
+  test('superseded timeout cannot retire the newer engine', () async {
+    final pending = Completer<int>();
+    var current = true;
+    final task = loadDirectAudio<int>(
+      load: () => pending.future,
+      isCurrent: () => current,
+      onTimeout: () => fail('must not retire the next engine'),
+      timeout: const Duration(milliseconds: 5),
+    );
+    current = false;
+    await expectLater(task, throwsA(isA<TimeoutException>()));
+    pending.complete(1);
   });
 
-  test('direct errors reach existing retry and skip handling', () async {
+  test('late source-ready event cannot publish the previous song', () async {
+    final pending = Completer<int>();
+    var current = true;
+    final task = loadDirectAudio<int>(
+        load: () => pending.future,
+        isCurrent: () => current,
+        onTimeout: () => fail('unexpected timeout'));
+    current = false;
+    pending.complete(10);
+    await expectLater(task, throwsStateError);
+  });
+
+  test('native source errors reach existing retry and skip handling', () async {
     await expectLater(
-        loadAudioWithFallback<int>(
-          cached: () async => throw StateError('cache rejected'),
-          direct: () async => throw const FormatException('bad audio'),
-          stop: () async {},
+        loadDirectAudio<int>(
+          load: () async => throw const FormatException('bad audio'),
           isCurrent: () => true,
-          onCacheFailure: (_) {},
+          onTimeout: () => fail('not a timeout'),
         ),
         throwsFormatException);
   });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -10,19 +12,30 @@ import 'player_store.dart';
 /// [PlaybackState] derived from the store's engine.
 class MusixAudioHandler extends BaseAudioHandler {
   final PlayerStore player;
+  StreamSubscription<PlaybackEvent>? _engineEvents;
 
   /// Custom control id for the "收藏" (favorite) button on the notification.
   static const _favoriteAction = 'toggleFavorite';
 
   MusixAudioHandler(this.player) {
-    player.engine.playbackEventStream.listen((_) => _broadcastState(),
-      // Source loading errors are handled by PlayerStore's awaited load/play.
-      // Consuming the broadcast error keeps it from escaping as a platform error.
-      onError: (Object error, StackTrace stack) => _broadcastState());
+    _observeEngine(player.engine);
+    player.engineChanges.listen(_observeEngine);
     player.favoriteChanges.listen((_) => _broadcastState());
     player.mediaItemChanges.listen((item) {
       mediaItem.add(item);
       _broadcastState();
+    });
+  }
+
+  void _observeEngine(AudioPlayer engine) {
+    _engineEvents?.cancel();
+    _engineEvents = engine.playbackEventStream.listen((_) {
+      if (identical(engine, player.engine)) _broadcastState();
+    },
+        // Source loading errors are handled by PlayerStore's awaited load/play.
+        // Consuming the broadcast error keeps it from escaping as a platform error.
+        onError: (Object error, StackTrace stack) {
+      if (identical(engine, player.engine)) _broadcastState();
     });
   }
 

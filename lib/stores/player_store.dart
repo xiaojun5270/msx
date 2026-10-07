@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
@@ -67,21 +66,41 @@ class PlayerStore extends ChangeNotifier {
   }
 
   // ---- Engine + bridges ------------------------------------------------------
-  AudioPlayer _av = AudioPlayer(
-    userAgent: 'Musix/1.0 (Android)',
-    useProxyForRequestHeaders: false,
-    audioLoadConfiguration: const AudioLoadConfiguration(
-      androidLoadControl: AndroidLoadControl(
-        minBufferDuration: Duration(minutes: 3),
-        maxBufferDuration: Duration(minutes: 5),
-        bufferForPlaybackDuration: Duration(seconds: 3),
-        bufferForPlaybackAfterRebufferDuration: Duration(seconds: 10),
-        prioritizeTimeOverSizeThresholds: true,
-        backBufferDuration: Duration(seconds: 30),
-      ),
-    ),
-  );
+  static AudioPlayer _createEngine() => AudioPlayer(
+        userAgent: 'Musix/1.0 (Android)',
+        useProxyForRequestHeaders: false,
+        audioLoadConfiguration: const AudioLoadConfiguration(
+          androidLoadControl: AndroidLoadControl(
+            minBufferDuration: Duration(minutes: 3),
+            maxBufferDuration: Duration(minutes: 5),
+            bufferForPlaybackDuration: Duration(seconds: 3),
+            bufferForPlaybackAfterRebufferDuration: Duration(seconds: 10),
+            prioritizeTimeOverSizeThresholds: true,
+            backBufferDuration: Duration(seconds: 30),
+          ),
+        ),
+      );
+  AudioPlayer _av = _createEngine();
   AudioPlayer get engine => _av;
+  final _engineChanges = StreamController<AudioPlayer>.broadcast(sync: true);
+  Stream<AudioPlayer> get engineChanges => _engineChanges.stream;
+
+  // A load/stop blocked in the native plugin must not serialize the next song
+  // behind it. Detach immediately; disposal is best effort on the old instance.
+  void _replaceEngine() {
+    final old = _av;
+    _av = _createEngine();
+    _attachEngineListeners();
+    _engineChanges.add(_av);
+    _applyVolume();
+    unawaited(old
+        .dispose()
+        .timeout(const Duration(seconds: 3))
+        .catchError((Object error) {
+      LocalLogStore.shared.warn(AppLogCategory.player, 'engine.dispose_delayed',
+          fields: {'error': error.toString()});
+    }));
+  }
 
   final StreamController<MediaItem?> _mediaItemCtrl =
       StreamController<MediaItem?>.broadcast();
@@ -135,8 +154,10 @@ class PlayerStore extends ChangeNotifier {
   }
 
   void _startEnginePlayback(int generation) {
+    final engine = _av;
     final task =
-        _av.play().catchError((Object error, StackTrace stackTrace) async {
+        engine.play().catchError((Object error, StackTrace stackTrace) async {
+      if (!identical(engine, _av)) return;
       await _handleEnginePlaybackError(generation, error);
     });
     unawaited(task);
@@ -167,7 +188,7 @@ class PlayerStore extends ChangeNotifier {
       return;
     }
     final failedIndex = index;
-    await _av.stop();
+    _replaceEngine();
     _loadedTrackKey = null;
     _loadedURL = null;
     if (generation != _token) return;
@@ -251,7 +272,9 @@ class PlayerStore extends ChangeNotifier {
     }
     _engineSubs.clear();
 
-    _engineSubs.add(_av.positionStream.listen((pos) {
+    final engine = _av;
+    _engineSubs.add(engine.positionStream.listen((pos) {
+      if (!identical(engine, _av)) return;
       if (isSeeking || loading) return;
       final secs = pos.inMilliseconds / 1000.0;
       if ((secs - current).abs() >= 0.05) {
@@ -268,7 +291,8 @@ class PlayerStore extends ChangeNotifier {
       _maybeReportListen();
     }));
 
-    _engineSubs.add(_av.durationStream.listen((d) {
+    _engineSubs.add(engine.durationStream.listen((d) {
+      if (!identical(engine, _av)) return;
       if (d == null) return;
       final secs = d.inMilliseconds / 1000.0;
       if (secs.isFinite && (secs - duration).abs() >= 0.05) {
@@ -277,7 +301,8 @@ class PlayerStore extends ChangeNotifier {
       }
     }));
 
-    _engineSubs.add(_av.playerStateStream.listen((state) {
+    _engineSubs.add(engine.playerStateStream.listen((state) {
+      if (!identical(engine, _av)) return;
       _syncPlaybackState();
       if (state.processingState == ProcessingState.completed) {
         _onEnded();
@@ -512,8 +537,7 @@ class PlayerStore extends ChangeNotifier {
     loading = false;
     _setWantsPlayback(false);
     playing = false;
-    _av.pause();
-    _av.stop();
+    _replaceEngine();
     _loadedTrackKey = null;
     _playbackIntentID = null;
     _playbackSessionID = null;
@@ -880,6 +904,7 @@ class PlayerStore extends ChangeNotifier {
     lyrics = [];
     _setSourceProgress(PlaybackSourcePhase.ready);
     try {
+      _replaceEngine();
       await _loadAudio(retained.url, retained.headers, current, mine);
     } catch (error) {
       LocalLogStore.shared.warn(
@@ -888,6 +913,7 @@ class PlayerStore extends ChangeNotifier {
         fields: {'track': retained.trackKey, 'error': error.toString()},
       );
       _discardRetainedPlayback(retained);
+      if (mine != _token) return true;
       return false;
     }
     if (mine != _token) return true;
@@ -1059,7 +1085,7 @@ class PlayerStore extends ChangeNotifier {
     _setWantsPlayback(autoplay);
     _lyricsToken += 1;
     loading = true;
-    await _av.pause();
+    _replaceEngine();
     playing = false;
     current = position;
     duration = row.duration;
@@ -1132,7 +1158,8 @@ class PlayerStore extends ChangeNotifier {
             mine == _token) {
           await Future.delayed(const Duration(milliseconds: 400));
           if (mine != _token || !DateTime.now().isBefore(deadline)) break;
-          result = await session.api.pollPlaybackIntent(intentID)
+          result = await session.api
+              .pollPlaybackIntent(intentID)
               .timeout(deadline.difference(DateTime.now()));
           createdSessionID = result.sessionId;
           acceptDeadline(result);
@@ -1150,7 +1177,7 @@ class PlayerStore extends ChangeNotifier {
           if (result.sessionId != null) {
             await session.api
                 .delete('/api/playback/sessions/${result.sessionId}')
-              .timeout(const Duration(seconds: 3))
+                .timeout(const Duration(seconds: 3))
                 .catchError((_) {});
           }
           return;
@@ -1182,7 +1209,7 @@ class PlayerStore extends ChangeNotifier {
           if (result.sessionId != null) {
             await session.api
                 .delete('/api/playback/sessions/${result.sessionId}')
-              .timeout(const Duration(seconds: 3))
+                .timeout(const Duration(seconds: 3))
                 .catchError((_) {});
           }
           if (mine != _token) return;
@@ -1212,7 +1239,8 @@ class PlayerStore extends ChangeNotifier {
         engineHeaders.remove('Cookie');
       }
       _setSourceProgress(PlaybackSourcePhase.buffering);
-      final loadedDuration = await _loadAudio(probe.finalUrl, engineHeaders, position, mine);
+      final loadedDuration =
+          await _loadAudio(probe.finalUrl, engineHeaders, position, mine);
       if (mine != _token) return;
       _loadedTrackKey = row.key;
       _loadedURL = probe.finalUrl;
@@ -1263,12 +1291,12 @@ class PlayerStore extends ChangeNotifier {
       );
       await session.api
           .delete('/api/playback/intents/$intentID')
-              .timeout(const Duration(seconds: 3))
+          .timeout(const Duration(seconds: 3))
           .catchError((_) {});
       if (createdSessionID != null) {
         await session.api
             .delete('/api/playback/sessions/$createdSessionID')
-              .timeout(const Duration(seconds: 3))
+            .timeout(const Duration(seconds: 3))
             .catchError((_) {});
       }
       if (mine == _token &&
@@ -1284,7 +1312,7 @@ class PlayerStore extends ChangeNotifier {
         return;
       }
       if (mine == _token) {
-        await _av.stop();
+        _replaceEngine();
         _loadedTrackKey = null;
         _loadedURL = null;
         _playbackIntentID = null;
@@ -1347,81 +1375,28 @@ class PlayerStore extends ChangeNotifier {
     return true;
   }
 
-  Future<AudioSource> _cachedAudioSource(
-      Uri uri, Map<String, String> headers) async {
-    final source = LockCachingAudioSource(uri, headers: headers);
-    final resolved = await source.resolve();
-    unawaited(_pruneAudioCache(source));
-    return resolved;
-  }
-
-  Future<Duration?> _loadAudio(Uri url, Map<String, String> headers,
-      double position, int generation) => loadAudioWithFallback<Duration?>(
-    isCurrent: () => generation == _token,
-    cached: () async {
-      final source = await _cachedAudioSource(url, headers);
-      if (generation != _token) throw StateError('Audio request superseded');
-      return _av.setAudioSource(source,
-        initialPosition: Duration(milliseconds: (position * 1000).round()));
-    },
-    stop: () => _av.stop(),
-    direct: () => _av.setAudioSource(AudioSource.uri(url, headers: headers),
-        initialPosition: Duration(milliseconds: (position * 1000).round())),
-    onCacheFailure: (error) => LocalLogStore.shared.warn(
-      AppLogCategory.player, 'playback.cache_fallback',
-      fields: {'host': url.host, 'error': error.toString()}),
-  );
-
-  Future<void> _pruneAudioCache(LockCachingAudioSource active) async {
-    try {
-      final activeFile = await active.cacheFile;
-      final directory = activeFile.parent;
-      if (!await directory.exists()) return;
-      final groups = <String, List<File>>{};
-      final partial = <String>{};
-      await for (final entity in directory.list()) {
-        if (entity is! File) continue;
-        var base = entity.path;
-        if (base.endsWith('.part')) {
-          base = base.substring(0, base.length - 5);
-          partial.add(base);
-        } else if (base.endsWith('.mime')) {
-          base = base.substring(0, base.length - 5);
-        }
-        groups.putIfAbsent(base, () => []).add(entity);
-      }
-      final completed = groups.entries
-          .where((entry) =>
-              !partial.contains(entry.key) &&
-              entry.value.any((file) => file.path == entry.key))
-          .toList();
-      if (completed.length <= 8) return;
-      final activeBase = activeFile.path;
-      final stale = <({String base, DateTime modified, List<File> files})>[];
-      for (final entry in completed) {
-        if (entry.key == activeBase) continue;
-        var modified = DateTime.fromMillisecondsSinceEpoch(0);
-        for (final file in entry.value) {
-          final value = await file.lastModified();
-          if (value.isAfter(modified)) modified = value;
-        }
-        stale.add((base: entry.key, modified: modified, files: entry.value));
-      }
-      stale.sort((a, b) => a.modified.compareTo(b.modified));
-      final removeCount = completed.length - 8;
-      for (final entry in stale.take(removeCount)) {
-        for (final file in entry.files) {
-          await file.delete().catchError((_) => file);
-        }
-      }
-    } catch (_) {
-      // Cache pruning is best-effort and must never interrupt playback.
-    }
+  Future<Duration?> _loadAudio(
+      Uri url, Map<String, String> headers, double position, int generation) {
+    final engine = _av;
+    LocalLogStore.shared.info(AppLogCategory.player, 'playback.direct_loading',
+        fields: {
+          'host': url.host,
+          'track': track?.key ?? '',
+          'generation': '$generation'
+        });
+    return loadDirectAudio<Duration?>(
+      isCurrent: () => generation == _token && identical(engine, _av),
+      load: () => engine.setAudioSource(AudioSource.uri(url, headers: headers),
+          initialPosition: Duration(milliseconds: (position * 1000).round())),
+      onTimeout: () {
+        if (generation == _token && identical(engine, _av)) _replaceEngine();
+      },
+    );
   }
 
   Future<void> _finishPlaybackFailure(
       int failedIndex, String message, bool autoplay) async {
-    await _av.stop().catchError((_) {});
+    _replaceEngine();
     _loadedTrackKey = null;
     _loadedURL = null;
     _loadedHeaders = const {};
@@ -2139,6 +2114,8 @@ class PlayerStore extends ChangeNotifier {
 
   @override
   void dispose() {
+    _token += 1;
+    _lyricsToken += 1;
     for (final s in _engineSubs) {
       s.cancel();
     }
@@ -2147,6 +2124,7 @@ class PlayerStore extends ChangeNotifier {
     }
     _mediaItemCtrl.close();
     _favoriteCtrl.close();
+    _engineChanges.close();
     _systemVolumeSub?.cancel();
     _av.dispose();
     super.dispose();

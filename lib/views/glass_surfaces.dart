@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart' show CupertinoTheme, CupertinoThemeData;
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -19,18 +21,29 @@ class MusicGlassPanel extends StatelessWidget {
       this.quality = GlassQuality.standard});
 
   @override
-  Widget build(BuildContext context) => Stack(children: [
-        Positioned.fill(
-            child: IgnorePointer(
-                child: GlassContainer(
-          useOwnLayer: true,
-          quality: quality,
-          shape: LiquidRoundedSuperellipse(borderRadius: radius),
-          settings: playerGlassSettings(context),
-          child: const SizedBox.expand(),
-        ))),
-        Padding(padding: padding, child: child),
-      ]);
+  Widget build(BuildContext context) {
+    final settings = playerGlassSettings(context);
+    return Stack(children: [
+      Positioned.fill(
+          child: IgnorePointer(
+              // The engine owns the live blur. The library draws only the rim
+              // above it, so its shader/quality fallback cannot remove the blur
+              // during scrolling or replace it with a cached tinted surface.
+              child: ClipRSuperellipse(
+                  borderRadius: BorderRadius.circular(radius),
+                  child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(
+                          sigmaX: settings.blur, sigmaY: settings.blur),
+                      child: GlassContainer(
+                        useOwnLayer: true,
+                        quality: quality,
+                        shape: LiquidRoundedSuperellipse(borderRadius: radius),
+                        settings: settings.copyWith(blur: 0),
+                        child: const SizedBox.expand(),
+                      ))))),
+      Padding(padding: padding, child: child),
+    ]);
+  }
 }
 
 class MusicGlassSwitch extends StatelessWidget {

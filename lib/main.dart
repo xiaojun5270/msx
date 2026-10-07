@@ -93,6 +93,13 @@ Future<void> main() async {
       child: LiquidGlassWidgets.wrap(
         brightnessResolver: Theme.maybeBrightnessOf,
         adaptiveQuality: true,
+        // A changing quality ceiling changes the material while scrolling.
+        // Keep one supported shader path across idle, drag and settled frames.
+        adaptiveConfig: const GlassAdaptiveScopeConfig(
+          minQuality: GlassQuality.standard,
+          maxQuality: GlassQuality.standard,
+          initialQuality: GlassQuality.standard,
+        ),
         child: const MusixApp(),
       ),
     ),
