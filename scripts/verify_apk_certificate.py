@@ -1,6 +1,6 @@
 """Check every APK signer against the pinned certificate after apksigner verify.
 
-Recent build-tools print SDK-range labels for v3.1 signers instead of `Signer #1`.
+Build-tools may print `Signer #1`, SDK-range labels, or `V2 Signer:` labels.
 Never include public-key hashes or a source-stamp certificate in this comparison.
 """
 
@@ -20,7 +20,9 @@ def normalize_fingerprint(value):
 def verify_report(report, expected):
     expected = normalize_fingerprint(expected)
     signers = re.findall(
-        r'^\s*Signer (?:#\d+|\([^\r\n]+\)) certificate SHA-256 digest:\s*([^\r\n]+)',
+        r'^[ \t]*(?:Signer (?:#\d+|\([^\r\n]+\))'
+        r'|V[1-4](?:\.\d+)? Signer(?: (?:#\d+|\([^\r\n]+\)))?:)'
+        r'[ \t]+certificate SHA-256 digest:[ \t]*([^\r\n]+)',
         report, re.MULTILINE,
     )
     if not signers:
