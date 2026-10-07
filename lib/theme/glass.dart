@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid;
 import 'theme.dart';
 
 /// App-wide backdrop. A custom image is shown without any color veil so every
@@ -8,8 +9,14 @@ import 'theme.dart';
 class AppBackdrop extends StatelessWidget {
   final Widget child;
   final String? imageUrl;
+  final bool enableLiquidGlass;
 
-  const AppBackdrop({super.key, required this.child, this.imageUrl});
+  const AppBackdrop({
+    super.key,
+    required this.child,
+    this.imageUrl,
+    this.enableLiquidGlass = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +55,22 @@ class AppBackdrop extends StatelessWidget {
           ),
       ],
     );
+
+    if (enableLiquidGlass) {
+      return liquid.GlassPage(
+        background: ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.topCenter,
+            minWidth: viewport.width,
+            maxWidth: viewport.width,
+            minHeight: viewport.height,
+            maxHeight: viewport.height,
+            child: SizedBox.fromSize(size: viewport, child: background),
+          ),
+        ),
+        child: child,
+      );
+    }
 
     return Stack(
       fit: StackFit.expand,

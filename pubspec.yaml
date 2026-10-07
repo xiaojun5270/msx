@@ -4,8 +4,8 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
-  flutter: ">=3.24.0"
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.41.0"
 
 dependencies:
   flutter:
@@ -27,7 +27,7 @@ dependencies:
   cached_network_image: ^3.4.1
 
   # iOS-style liquid glass bottom navigation.
-  liquid_glass_bottom_bar: ^0.0.6
+  liquid_glass_widgets: 1.10.0
 
   # Average-color artwork theming — replaces CoreImage CIAreaAverage.
   palette_generator: ^0.3.3+5

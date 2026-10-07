@@ -101,7 +101,11 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
           ),
           child: AppBackdrop(
             imageUrl: backgroundImageUrl,
-            child: child ?? const SizedBox.shrink(),
+            enableLiquidGlass: true,
+            child: Material(
+              type: MaterialType.transparency,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },

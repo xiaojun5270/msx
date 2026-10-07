@@ -1,17 +1,21 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../api/auth_box.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
-import '../theme/glass.dart';
+import '../theme/player_glass.dart';
 import '../theme/theme.dart';
 
 /// Collapsible floating player with artwork refraction and full transport.
 class MiniPlayer extends StatefulWidget {
   const MiniPlayer({super.key});
+
+  static const collapsedExtent = 88.0;
+  static const expandedExtent = 174.0;
 
   @override
   State<MiniPlayer> createState() => _MiniPlayerState();
@@ -46,14 +50,11 @@ class _MiniPlayerState extends State<MiniPlayer> {
             if (velocity < -180 && !expanded) ui.setPlayerExpanded(true);
             if (velocity > 180 && expanded) ui.setPlayerExpanded(false);
           },
-          child: GlassSurface(
-            borderRadius: BorderRadius.circular(expanded ? 28 : 34),
-            blur: 0,
-            tint: Colors.transparent,
-            showBorder: true,
-            showHighlight: false,
-            showShadow: false,
-            pureBlur: true,
+          child: GlassContainer(
+            shape: LiquidRoundedSuperellipse(borderRadius: expanded ? 28 : 34),
+            useOwnLayer: true,
+            quality: GlassQuality.premium,
+            settings: playerGlassSettings(context),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,

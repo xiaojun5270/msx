@@ -35,6 +35,10 @@ build/
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
 *.jks
+*.keystore
+*.p12
+*.pfx
+signing-credentials.json
 
 # Symbolication / obfuscation
 app.*.symbols

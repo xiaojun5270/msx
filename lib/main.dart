@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
@@ -42,6 +43,8 @@ Future<void> main() async {
     return false;
   };
   logs.info(AppLogCategory.app, 'app.started');
+
+  await LiquidGlassWidgets.initialize(enablePerformanceMonitor: false);
 
   // Configure the platform audio session for music playback (focus handling,
   // ducking, interruption). Mirrors the Swift `AVAudioSession` setup.
@@ -87,7 +90,11 @@ Future<void> main() async {
         ChangeNotifierProvider<UIStore>.value(value: ui),
         ChangeNotifierProvider<PlayerStore>.value(value: player),
       ],
-      child: const MusixApp(),
+      child: LiquidGlassWidgets.wrap(
+        brightnessResolver: Theme.maybeBrightnessOf,
+        adaptiveQuality: true,
+        child: const MusixApp(),
+      ),
     ),
   );
 }

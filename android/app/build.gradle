@@ -22,6 +22,31 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file('key.properties')
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+def releaseSigning = [
+    storeFile: System.getenv('ANDROID_KEYSTORE_PATH') ?: signingProperties['storeFile'],
+    storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: signingProperties['storePassword'],
+    keyAlias: System.getenv('ANDROID_KEY_ALIAS') ?: signingProperties['keyAlias'],
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD') ?: signingProperties['keyPassword']
+]
+
+// Never silently fall back to a new runner's debug certificate for a release.
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.project == project && it.name.toLowerCase().contains('release') }) {
+        def missing = releaseSigning.findAll { key, value -> !value }.keySet()
+        if (!missing.isEmpty()) {
+            throw new GradleException("Release signing is not configured: ${missing.join(', ')}. Supply Android signing secrets or android/key.properties.")
+        }
+        if (!file(releaseSigning.storeFile).isFile()) {
+            throw new GradleException('The configured release keystore does not exist.')
+        }
+    }
+}
+
 android {
     namespace = "com.musix.app"
     compileSdk = 36
@@ -44,10 +69,19 @@ android {
         versionName = flutterVersionName
     }
 
+    signingConfigs {
+        release {
+            if (releaseSigning.storeFile) storeFile file(releaseSigning.storeFile)
+            storePassword releaseSigning.storePassword
+            keyAlias releaseSigning.keyAlias
+            keyPassword releaseSigning.keyPassword
+            storeType 'PKCS12'
+        }
+    }
+
     buildTypes {
         release {
-            // Debug signing so `flutter build apk` works out of the box on Windows.
-            signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.release
             minifyEnabled = false
             shrinkResources = false
         }

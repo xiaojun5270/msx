@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:liquid_glass_bottom_bar/liquid_glass_bottom_bar.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
@@ -8,6 +8,7 @@ import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/glass.dart';
+import '../theme/player_glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'account_view.dart';
@@ -122,8 +123,11 @@ class _MobileShellState extends State<MobileShell> {
     final keyboardVisible = media.viewInsets.bottom > 0;
     final safeBottom = media.padding.bottom;
     final navExtent = 60.0 + safeBottom;
-    final playerExtent =
-        player.track == null ? 0.0 : (ui.playerExpanded ? 169.0 : 88.0);
+    final playerExtent = player.track == null
+        ? 0.0
+        : (ui.playerExpanded
+            ? MiniPlayer.expandedExtent
+            : MiniPlayer.collapsedExtent);
     final contentBottomInset =
         keyboardVisible ? 0.0 : navExtent + playerExtent + 16;
     final bodyMedia = media.copyWith(
@@ -179,7 +183,7 @@ class _MobileShellState extends State<MobileShell> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (player.track != null) const MiniPlayer(),
-                    _LiquidDock(
+                    LiquidDock(
                         current: _tab, order: _order, onSelect: _selectTab),
                   ],
                 ),
@@ -261,12 +265,16 @@ class _MobileShellState extends State<MobileShell> {
   }
 }
 
-class _LiquidDock extends StatelessWidget {
+class LiquidDock extends StatelessWidget {
   final AppTab current;
   final List<AppTab> order;
   final ValueChanged<AppTab> onSelect;
-  const _LiquidDock(
-      {required this.current, required this.order, required this.onSelect});
+  const LiquidDock({
+    super.key,
+    required this.current,
+    required this.order,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -276,22 +284,33 @@ class _LiquidDock extends StatelessWidget {
       child: MediaQuery.removePadding(
         context: context,
         removeBottom: true,
-        child: LiquidGlassBottomBar(
-          items: [
+        child: GlassTabBar.bottom(
+          tabs: [
             for (final tab in order)
-              LiquidGlassBottomBarItem(
-                icon: _tabIcon(tab, false),
-                activeIcon: _tabIcon(tab, true),
+              GlassTab(
+                icon: Icon(_tabIcon(tab, false)),
+                activeIcon: Icon(_tabIcon(tab, true)),
                 label: tab.title,
               ),
           ],
-          currentIndex: order.indexOf(current),
-          onTap: (index) => onSelect(order[index]),
-          height: 60,
-          margin: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-          activeColor: ThemeAccent.current.color,
-          barBlurSigma: 10,
-          activeBlurSigma: 18,
+          selectedIndex: order.indexOf(current),
+          onTabSelected: (index) => onSelect(order[index]),
+          barHeight: 60,
+          barBorderRadius: 30,
+          horizontalPadding: 12,
+          verticalPadding: 0,
+          iconSize: 23,
+          labelFontSize: 11,
+          iconLabelSpacing: 3,
+          selectedIconColor: ThemeAccent.current.color,
+          selectedLabelColor: ThemeAccent.current.color,
+          unselectedIconColor: Theme.of(context).colorScheme.onSurface,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
+          quality: GlassQuality.premium,
+          settings: playerGlassSettings(context),
+          indicatorSettings: playerGlassSettings(context),
+          indicatorColor: Colors.white.withValues(alpha: 0.08),
+          glowOpacity: 0,
         ),
       ),
     );
