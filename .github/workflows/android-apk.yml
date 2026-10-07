@@ -43,7 +43,9 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Test
-        run: flutter test
+        run: |
+          flutter test
+          python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Restore fixed release keystore
         env:
@@ -69,18 +71,21 @@ jobs:
         run: flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
 
       - name: Verify release signing certificate
+        id: verify-signing
         run: |
           set -euo pipefail
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           test -n "$apksigner"
-          "$apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk > "$RUNNER_TEMP/apk-certificate.txt"
-          actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-certificate.txt" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
-          expected=$(tr -d ':[:space:]' < android/signing-certificate.sha256 | tr '[:upper:]' '[:lower:]')
-          if [ -z "$expected" ] || [ "$actual" != "$expected" ]; then
-            echo 'Release certificate mismatch. APK will not be published.' >&2
-            exit 1
-          fi
-          echo "Verified release certificate SHA-256: $actual"
+          "$apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk 2>&1 | tee "$RUNNER_TEMP/apk-certificate.txt"
+          python3 scripts/verify_apk_certificate.py "$RUNNER_TEMP/apk-certificate.txt" android/signing-certificate.sha256
+
+      - name: Upload signing diagnostics on failure
+        if: failure() && steps.verify-signing.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-signing-diagnostics
+          path: ${{ runner.temp }}/apk-certificate.txt
+          if-no-files-found: warn
 
       - name: Remove temporary keystore
         if: always()
