@@ -184,7 +184,7 @@ class _ServerLogsViewState extends State<ServerLogsView> {
                   : _logs.isEmpty
                       ? _empty('暂无日志记录')
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 28),
+                          padding: EdgeInsets.fromLTRB(12, 4, 12, 28 + MediaQuery.paddingOf(context).bottom),
                           itemCount: _logs.length + 2,
                           itemBuilder: (_, i) {
                             if (i == 0) {
@@ -428,7 +428,7 @@ class _ClientLogsViewState extends State<ClientLogsView> {
                         Center(child: Text('暂无本地日志', style: TextStyle(color: MX.dim, fontSize: 15))),
                       ])
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 28),
+                        padding: EdgeInsets.fromLTRB(12, 4, 12, 28 + MediaQuery.paddingOf(context).bottom),
                         itemCount: logs.length + 1,
                         itemBuilder: (_, i) {
                           if (i == 0) {

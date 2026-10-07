@@ -60,7 +60,7 @@ class _GenresViewState extends State<GenresView> {
         title: Text('曲风', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           Text('从平台曲风中发现新的歌手与歌曲', style: TextStyle(color: MX.dim, fontSize: 14)),
           const SizedBox(height: 14),
@@ -292,7 +292,7 @@ class _GenreDetailViewState extends State<GenreDetailView> {
         title: Text(r?.genre?.name ?? '曲风推荐', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           Row(
             children: [
@@ -543,7 +543,7 @@ class _DailyViewState extends State<DailyView> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           if (_plats.isNotEmpty) ...[
             ChipBar(
@@ -608,7 +608,7 @@ class _ExplorePlaylistsViewState extends State<ExplorePlaylistsView> {
         title: Text('歌单', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           ChipBar(
             items: const [('all', '全部'), ('apple', 'Apple'), ('netease', '网易云'), ('qqmusic', 'QQ'), ('kugou', '酷狗')],
@@ -704,7 +704,7 @@ class _ExploreAlbumsViewState extends State<ExploreAlbumsView> {
         title: Text('新发行', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           if (_plats.isNotEmpty) ...[
             ChipBar(

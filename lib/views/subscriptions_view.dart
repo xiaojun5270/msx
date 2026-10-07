@@ -154,7 +154,7 @@ class _SubscriptionsViewState extends State<SubscriptionsView> {
             : _items.isEmpty
                 ? _empty()
                 : GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom),
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 200,
                       mainAxisSpacing: 14,
@@ -594,7 +594,7 @@ class _SubscriptionDetailViewState extends State<SubscriptionDetailView> {
       body: sub == null
           ? Center(child: CircularProgressIndicator(color: MX.ember))
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom),
               children: [
                 _header(sub),
                 const SizedBox(height: 16),

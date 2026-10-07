@@ -8,6 +8,7 @@ import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/glass.dart';
+import '../theme/bottom_chrome.dart';
 import '../theme/player_glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
@@ -130,9 +131,6 @@ class _MobileShellState extends State<MobileShell> {
             : MiniPlayer.collapsedExtent);
     final contentBottomInset =
         keyboardVisible ? 0.0 : navExtent + playerExtent + 16;
-    final bodyMedia = media.copyWith(
-      padding: media.padding.copyWith(bottom: safeBottom),
-    );
 
     // Route intents raised anywhere (deep links, in-view navigation) are
     // pushed onto the active tab's stack after the frame commits.
@@ -155,51 +153,52 @@ class _MobileShellState extends State<MobileShell> {
         if (didPop) return;
         _handleSystemBack();
       },
-      child: Stack(
-        children: [
-          Scaffold(
-            backgroundColor: Colors.transparent,
-            extendBody: true,
-            resizeToAvoidBottomInset: false,
-            body: Padding(
-              padding: EdgeInsets.only(bottom: contentBottomInset),
-              child: MediaQuery(
-                data: bodyMedia,
-                child: IndexedStack(
-                  index: _order.indexOf(_tab),
-                  children: [for (final t in _order) _tabNavigator(t)],
+      child: LiquidGlassScope(
+        child: Stack(
+          children: [
+            GlassBackgroundSource(
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                extendBody: true,
+                resizeToAvoidBottomInset: false,
+                body: BottomChromeContent(
+                  extent: contentBottomInset,
+                  child: IndexedStack(
+                    index: _order.indexOf(_tab),
+                    children: [for (final t in _order) _tabNavigator(t)],
+                  ),
                 ),
               ),
             ),
-          ),
-          if (!keyboardVisible)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Material(
-                type: MaterialType.transparency,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (player.track != null) const MiniPlayer(),
-                    LiquidDock(
-                        current: _tab, order: _order, onSelect: _selectTab),
-                  ],
+            if (!keyboardVisible)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (player.track != null) const MiniPlayer(),
+                      LiquidDock(
+                          current: _tab, order: _order, onSelect: _selectTab),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          if (ui.toast.isNotEmpty)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 0,
-              right: 0,
-              child: Material(
-                type: MaterialType.transparency,
-                child: Center(child: _Toast(text: ui.toast)),
+            if (ui.toast.isNotEmpty)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 12,
+                left: 0,
+                right: 0,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Center(child: _Toast(text: ui.toast)),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

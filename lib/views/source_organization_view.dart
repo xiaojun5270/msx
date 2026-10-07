@@ -69,7 +69,7 @@ class _SourceRunsViewState extends State<SourceRunsView> {
         color: MX.ember,
         onRefresh: () => _load(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 28),
+        padding: EdgeInsets.fromLTRB(12, 6, 12, 28 + MediaQuery.paddingOf(context).bottom),
           children: [
             for (final run in _runs) _runRow(run),
             if (_error != null) ...[
@@ -236,7 +236,7 @@ class _SourceOrganizationViewState extends State<SourceOrganizationView> {
         title: Text('整理音源', style: TextStyle(color: MX.fg, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.paddingOf(context).bottom),
         children: [
           _overview(run),
           const SizedBox(height: 20),

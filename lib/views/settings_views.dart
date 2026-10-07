@@ -326,7 +326,7 @@ class _SettingsViewState extends State<SettingsView> {
     return _settingsScaffold(
       '设置',
       ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _group(
             header: '账户',
@@ -917,7 +917,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
     return _settingsScaffold(
       '个人资料',
       ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _Card(
             child: Column(
@@ -1282,7 +1282,7 @@ class _AutomationViewState extends State<AutomationView> {
     return _settingsScaffold(
       '自动化',
       ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _cookieCloudCard(),
           const SizedBox(height: 16),
@@ -1864,7 +1864,7 @@ class _PlatformSettingsViewState extends State<PlatformSettingsView> {
     return _settingsScaffold(
       MX.label(id),
       ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _headerCard(tone),
           if (_qrActive) ...[
@@ -2344,7 +2344,7 @@ class _CustomSourcesViewState extends State<CustomSourcesView> {
     return _settingsScaffold(
       'LX 自定义音源',
       ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _Card(
             child: Row(

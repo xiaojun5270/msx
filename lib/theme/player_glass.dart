@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 /// Shared, neutral material for the floating playback controls and dock.
-/// Keep the tint subtle so custom wallpaper stays visible through the lens.
+/// No body tint: the lens samples the current page rather than a fixed fill.
 LiquidGlassSettings playerGlassSettings(BuildContext context) {
   final dark = Theme.of(context).brightness == Brightness.dark;
   return LiquidGlassSettings(
-    glassColor: dark ? const Color(0x12000000) : const Color(0x12FFFFFF),
+    glassColor: Colors.transparent,
     bodyMode: GlassBodyMode.clear,
     blur: 6,
     thickness: 24,

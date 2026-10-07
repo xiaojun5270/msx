@@ -425,7 +425,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
         child: (_loading && _playlist == null)
             ? ListView(children: [const SizedBox(height: 120), Center(child: CircularProgressIndicator(color: MX.ember))])
             : ListView(
-                padding: EdgeInsets.zero,
+                padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
                 children: [
                   CollectionHero(
                     cover: _cover,
@@ -597,7 +597,7 @@ class _AlbumDetailViewState extends State<AlbumDetailView> {
       child: (_loading && _album == null)
           ? ListView(children: [const SizedBox(height: 120), Center(child: CircularProgressIndicator(color: MX.ember))])
           : ListView(
-              padding: EdgeInsets.zero,
+              padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
               children: [
                 CollectionHero(
                   cover: _album?.cover,
@@ -728,7 +728,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
       child: (_loading && _artist == null)
           ? ListView(children: [const SizedBox(height: 120), Center(child: CircularProgressIndicator(color: MX.ember))])
           : ListView(
-              padding: EdgeInsets.zero,
+              padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
               children: [
                 CollectionHero(
                   cover: _cover,
