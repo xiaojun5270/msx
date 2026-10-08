@@ -24,18 +24,19 @@ class MusicGlassPanel extends StatelessWidget {
       this.refractBackground = false})
       : _isCard = false;
 
-  /// Use the navigation bar's neutral material and grouped rendering path.
+  /// Transparent page content with no painted background or glass layer.
   const MusicGlassPanel.card(
       {super.key,
       required this.child,
       this.padding = EdgeInsets.zero,
       this.radius = 24,
-      this.quality = GlassQuality.premium})
-      : refractBackground = true,
+      this.quality = GlassQuality.standard})
+      : refractBackground = false,
         _isCard = true;
 
   @override
   Widget build(BuildContext context) {
+    if (_isCard) return Padding(padding: padding, child: child);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final settings = playerGlassSettings(context);
     // The default panel has a clear, non-sampling surface. BackdropFilter inside
@@ -55,27 +56,6 @@ class MusicGlassPanel extends StatelessWidget {
         ))),
         Padding(padding: padding, child: child),
       ]);
-    }
-    if (_isCard) {
-      final resolvedQuality = playerGlassQuality(context, requested: quality);
-      return AdaptiveLiquidGlassLayer(
-        settings: settings,
-        quality: resolvedQuality,
-        child: Stack(children: [
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: IgnorePointer(
-                child: AdaptiveGlass.grouped(
-                  shape: LiquidRoundedRectangle(borderRadius: radius),
-                  quality: resolvedQuality,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            ),
-          ),
-          Padding(padding: padding, child: child),
-        ]),
-      );
     }
     final glass = GlassContainer(
       useOwnLayer: true,
