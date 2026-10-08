@@ -232,13 +232,12 @@ class _MiniPlayerState extends State<MiniPlayer> {
                       activeTrackColor: MX.fg.withOpacity(0.82),
                       inactiveTrackColor: MX.fg.withOpacity(0.16),
                       thumbColor: MX.fg,
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 4.5),
                       overlayShape:
                           const RoundSliderOverlayShape(overlayRadius: 12),
                     ),
                     child: MusicGlassSlider(
                       label: '播放进度',
+                      thumbRadius: 4.5,
                       value: current,
                       max: duration > 0 ? duration : 1,
                       onChanged: duration > 0 ? player.seek : null,

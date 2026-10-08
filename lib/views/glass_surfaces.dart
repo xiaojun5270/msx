@@ -14,19 +14,39 @@ class MusicGlassPanel extends StatelessWidget {
   final double radius;
   final GlassQuality quality;
   final bool refractBackground;
+  final bool _frosted;
   const MusicGlassPanel(
       {super.key,
       required this.child,
       this.padding = EdgeInsets.zero,
       this.radius = 24,
       this.quality = GlassQuality.standard,
-      this.refractBackground = false});
+      this.refractBackground = false})
+      : _frosted = false;
+
+  /// Readable liquid glass material for profile and settings content.
+  const MusicGlassPanel.card(
+      {super.key,
+      required this.child,
+      this.padding = EdgeInsets.zero,
+      this.radius = 24,
+      this.quality = GlassQuality.standard})
+      : refractBackground = true,
+        _frosted = true;
 
   @override
   Widget build(BuildContext context) {
-    final settings = playerGlassSettings(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    // Content cards have a clear, non-sampling surface. BackdropFilter inside
+    final settings = _frosted
+        ? playerGlassSettings(context).copyWith(
+            glassColor: dark
+                ? const Color.fromRGBO(30, 26, 33, 0.68)
+                : const Color.fromRGBO(255, 255, 255, 0.72),
+            bodyMode: GlassBodyMode.adaptive,
+            blur: 18,
+          )
+        : playerGlassSettings(context);
+    // The default panel has a clear, non-sampling surface. BackdropFilter inside
     // scrollable repaint boundaries can appear/disappear on device compositors.
     // Do not merely set sigma to zero: avoid both the filter and shader path.
     if (!refractBackground) {
@@ -47,8 +67,8 @@ class MusicGlassPanel extends StatelessWidget {
     return Stack(children: [
       Positioned.fill(
           child: IgnorePointer(
-              // The engine owns the live blur. The library draws only the rim
-              // above it, so its shader/quality fallback cannot remove the blur
+              // The engine owns the live blur. The library draws the glass
+              // material above it, so its quality fallback cannot remove blur
               // during scrolling or replace it with a cached tinted surface.
               child: ClipRSuperellipse(
                   borderRadius: BorderRadius.circular(radius),
@@ -110,13 +130,15 @@ class MusicGlassSlider extends StatelessWidget {
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangeEnd;
   final String? label;
+  final double thumbRadius;
   const MusicGlassSlider(
       {super.key,
       required this.value,
       this.max = 1,
       required this.onChanged,
       this.onChangeEnd,
-      this.label});
+      this.label,
+      this.thumbRadius = 9});
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +158,7 @@ class MusicGlassSlider extends StatelessWidget {
           inactiveColor: theme.inactiveTrackColor,
           thumbColor:
               theme.thumbColor ?? Theme.of(context).colorScheme.onSurface,
-          thumbRadius: 9,
+          thumbRadius: thumbRadius,
           trackHeight: theme.trackHeight ?? 3,
         ));
   }

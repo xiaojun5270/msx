@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
+import '../theme/player_glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -22,6 +24,7 @@ class _AccountViewState extends State<AccountView> {
   List<Playlist> _playlists = [];
   List<(String, List<Playlist>)> _platformGroups = [];
   int _subscriptionCount = 0;
+  bool _creatingPlaylist = false;
 
   static const _weights = {
     'apple': 4,
@@ -60,19 +63,87 @@ class _AccountViewState extends State<AccountView> {
     final lib = await session.fetchPage('/api/me/libraries/playlists',
         cacheKey: 'profile.libraries', factory: LibraryPayload.fromJson);
     if (lib != null) _applyLibraries(lib);
-    final box = await session.fetchPage('/api/my/playlists',
-        cacheKey: 'profile.playlists', factory: PlaylistsPayload.fromJson);
-    if (box != null) {
-      _playlists = (box.playlists ?? [])
-          .where((p) => p.kind != 'favorites' && p.listKind != 'favorites')
-          .toList();
-    }
+    await _loadPlaylists(session);
     try {
       final subs = await session.api
           .getJson('/api/subscriptions', SubscriptionsBox.fromJson);
       _subscriptionCount = subs.items?.length ?? 0;
     } catch (_) {}
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadPlaylists(SessionStore session) async {
+    final box = await session.fetchPage('/api/my/playlists',
+        cacheKey: 'profile.playlists', factory: PlaylistsPayload.fromJson);
+    if (!mounted || box == null) return;
+    setState(() {
+      _playlists = (box.playlists ?? [])
+          .where((p) => p.kind != 'favorites' && p.listKind != 'favorites')
+          .toList();
+    });
+  }
+
+  Future<void> _promptCreatePlaylist() async {
+    var name = '';
+    String? error;
+    final title = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) {
+          void submit() {
+            final title = name.trim();
+            if (title.isEmpty) {
+              update(() => error = '请输入歌单名称');
+              return;
+            }
+            Navigator.of(dialogContext).pop(title);
+          }
+
+          return MusicGlassDialog(
+            title: Text('新建歌单', style: TextStyle(color: MX.fg)),
+            content: TextField(
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              style: TextStyle(color: MX.fg),
+              decoration: InputDecoration(
+                hintText: '歌单名称',
+                hintStyle: TextStyle(color: MX.dim),
+                errorText: error,
+              ),
+              onChanged: (value) {
+                name = value;
+                if (error != null) update(() => error = null);
+              },
+              onSubmitted: (value) {
+                name = value;
+                submit();
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('取消'),
+              ),
+              TextButton(onPressed: submit, child: const Text('创建')),
+            ],
+          );
+        },
+      ),
+    );
+    if (!mounted || title == null || _creatingPlaylist) return;
+    final session = context.read<SessionStore>();
+    final ui = context.read<UIStore>();
+    setState(() => _creatingPlaylist = true);
+    try {
+      await session.api.post('/api/my/playlists', json: {'name': title});
+      if (!mounted) return;
+      ui.notify('已创建');
+      await _loadPlaylists(session);
+    } catch (e) {
+      if (mounted) ui.notify('创建失败：$e');
+    } finally {
+      if (mounted) setState(() => _creatingPlaylist = false);
+    }
   }
 
   void _applyLibraries(LibraryPayload lib) {
@@ -128,7 +199,10 @@ class _AccountViewState extends State<AccountView> {
           padding: EdgeInsets.fromLTRB(
               16, 12, 16, MediaQuery.paddingOf(context).bottom),
           children: [
-            _hero(session),
+            _glassPanel(
+              padding: const EdgeInsets.all(20),
+              child: _hero(session),
+            ),
             const SizedBox(height: 24),
             _customPlaylists(ui),
             const SizedBox(height: 24),
@@ -206,18 +280,30 @@ class _AccountViewState extends State<AccountView> {
         ),
       );
 
-  Widget _sectionHeader(String title, String? detail) => Padding(
+  Widget _sectionHeader(String title, String? detail, {Widget? action}) =>
+      Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(title,
-                style: TextStyle(
-                    color: MX.fg, fontSize: 20, fontWeight: FontWeight.bold)),
-            if (detail != null) ...[
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          color: MX.fg,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
+                  if (detail != null)
+                    Text(detail,
+                        style: TextStyle(color: MX.mute, fontSize: 13)),
+                ],
+              ),
+            ),
+            if (action != null) ...[
               const SizedBox(width: 8),
-              Text(detail, style: TextStyle(color: MX.mute, fontSize: 13)),
+              action,
             ],
           ],
         ),
@@ -228,7 +314,46 @@ class _AccountViewState extends State<AccountView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader(
-            '我的歌单', _playlists.isEmpty ? null : '${_playlists.length} 个'),
+          '我的歌单',
+          _playlists.isEmpty ? null : '${_playlists.length} 个',
+          action: GlassButton.custom(
+            label: '新建歌单',
+            onTap: _promptCreatePlaylist,
+            enabled: !_creatingPlaylist,
+            height: 44,
+            useOwnLayer: true,
+            quality: GlassQuality.standard,
+            stretch: 0.15,
+            shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+            settings: playerGlassSettings(context).copyWith(
+              glassColor: MX.ember.withValues(alpha: 0.14),
+              bodyMode: GlassBodyMode.adaptive,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_creatingPlaylist)
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: MX.ember),
+                    )
+                  else
+                    Icon(Icons.add, size: 18, color: MX.ember),
+                  const SizedBox(width: 4),
+                  Text(_creatingPlaylist ? '创建中' : '新建',
+                      style: TextStyle(
+                          color: MX.ember,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        ),
         if (_playlists.isEmpty)
           _emptyRow(
               Icons.queue_music, '还没有歌单', '新建歌单后，可选用 MusicX 服务器可访问的 NAS 音乐目录。')
@@ -449,7 +574,8 @@ class _AccountViewState extends State<AccountView> {
     required Widget child,
     EdgeInsets padding = EdgeInsets.zero,
   }) =>
-      Padding(
+      MusicGlassPanel.card(
+        radius: 16,
         padding: padding,
         child: SizedBox(width: double.infinity, child: child),
       );

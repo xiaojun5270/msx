@@ -31,7 +31,7 @@ class _Card extends StatelessWidget {
   const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
 
   @override
-  Widget build(BuildContext context) => MusicGlassPanel(
+  Widget build(BuildContext context) => MusicGlassPanel.card(
         padding: padding,
         child: SizedBox(
           width: double.infinity,
@@ -425,7 +425,7 @@ class _SettingsViewState extends State<SettingsView> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (header != null) Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
             child: Text(header, style: TextStyle(color: MX.mute))),
-          MusicGlassPanel(child: Column(children: rows)),
+          MusicGlassPanel.card(child: Column(children: rows)),
           if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
             child: Text(footer, style: TextStyle(color: MX.mute))),
         ]),

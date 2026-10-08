@@ -750,6 +750,9 @@ class _FavoritesViewState extends State<FavoritesView> {
   List<Playlist> _playlists = [];
   String? _favId;
   bool _loading = true;
+  bool _ingesting = false;
+
+  List<Track> get _ingestible => _tracks.where(LibraryIngest.canIngest).toList();
 
   int get _count {
     switch (_tab) {
@@ -829,6 +832,46 @@ class _FavoritesViewState extends State<FavoritesView> {
     return PlaylistRoute(platform: plat, id: p.id, kind: kind, fromLibrary: true);
   }
 
+  Future<void> _confirmIngest() async {
+    if (_ingesting || _ingestible.isEmpty) return;
+    final items = LibraryIngest.items(_ingestible);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => MusicGlassDialog(
+        title: Text('将 ${items.length} 首歌曲入库到本地？',
+            style: TextStyle(color: MX.fg, fontSize: 17)),
+        content: Text(
+          '按最高可用完整音质入库，不使用试听文件。已入库曲目会跳过；失败可在入库记录中重试。',
+          style: TextStyle(color: MX.dim, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('入库')),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true || _ingesting) return;
+    final session = context.read<SessionStore>();
+    final ui = context.read<UIStore>();
+    setState(() => _ingesting = true);
+    try {
+      final result = await session.api.postJson(
+        '/api/library/ingest/batch',
+        IngestBatchResult.fromJson,
+        json: {'items': items},
+      );
+      if (mounted) ui.notify(result.message);
+    } catch (e) {
+      if (mounted) ui.notify('入库失败：$e');
+    } finally {
+      if (mounted) setState(() => _ingesting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final player = context.read<PlayerStore>();
@@ -841,13 +884,22 @@ class _FavoritesViewState extends State<FavoritesView> {
           if (_tab == 'track' && _tracks.isNotEmpty)
             PopupMenuButton<String>(
               icon: Icon(Icons.more_horiz, color: MX.fg),
+              tooltip: '更多',
               color: MX.panel,
               onSelected: (v) {
                 if (v == 'organize') ui.openOrganization(_tracks);
+                if (v == 'ingest') _confirmIngest();
                 if (v == 'play') player.replaceQueue(_tracks, start: 0);
               },
               itemBuilder: (_) => [
                 PopupMenuItem(value: 'organize', child: Text('整理音源', style: TextStyle(color: MX.fg))),
+                if (_ingestible.isNotEmpty)
+                  PopupMenuItem(
+                    value: 'ingest',
+                    enabled: !_ingesting,
+                    child: Text(_ingesting ? '入库中…' : '一键入库',
+                        style: TextStyle(color: _ingesting ? MX.dim : MX.fg)),
+                  ),
                 PopupMenuItem(value: 'play', child: Text('播放', style: TextStyle(color: MX.fg))),
               ],
             ),

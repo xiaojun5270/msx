@@ -47,8 +47,6 @@ class _HomeViewState extends State<HomeView> {
 
   final Map<String, _ShelfState> _shelves = {};
   Playlist? _dailyMix;
-  List<Track> _preferenceTracks = [];
-  bool _preferenceTracksLoading = true;
   int _generation = 0;
   Future<void>? _loadTask;
   bool _refreshing = false;
@@ -80,8 +78,9 @@ class _HomeViewState extends State<HomeView> {
       title: data.title ?? '',
       more: data.more,
       items: data.items ?? const [],
-      tracks:
-          (data.tracks ?? const []).where((t) => t.title.isNotEmpty).toList(),
+      tracks: (data.tracks ?? const [])
+          .where((t) => t.title.isNotEmpty && (id != 'guess' || t.id.isNotEmpty))
+          .toList(),
       sections: data.sections ?? const [],
     );
   }
@@ -89,17 +88,14 @@ class _HomeViewState extends State<HomeView> {
   Future<void> _loadAll() async {
     final gen = _generation;
     final session = context.read<SessionStore>();
-    // Resolve the behavior-driven daily mix and the local favorites playlist.
+    // Resolve the behavior-driven daily mix.
     final box = await session.fetchPage('/api/my/playlists',
         cacheKey: 'library.recent.mine', factory: PlaylistsPayload.fromJson);
-    Playlist? favorites;
     if (mounted && gen == _generation) {
       Playlist? mix;
       for (final p in box?.playlists ?? const <Playlist>[]) {
         if (p.kind == 'auto') {
           mix = p;
-        } else if (p.kind == 'favorites') {
-          favorites = p;
         }
       }
       if (mix != null) setState(() => _dailyMix = mix);
@@ -111,155 +107,11 @@ class _HomeViewState extends State<HomeView> {
       await Future.wait(_kinds.skip(i).take(4).map(
         (kind) => _loadShelf(kind.$1, kind.$2, gen)));
     }
-    if (!mounted || gen != _generation) return;
-    if (_tracksIn(_shelves['guess']).isEmpty) {
-      await _loadPreferenceTracks(session, favorites, gen);
-    } else if (mounted && gen == _generation) {
-      setState(() => _preferenceTracksLoading = false);
-    }
   }
 
-  Future<void> _loadPreferenceTracks(
-      SessionStore session, Playlist? localFavorites, int gen) async {
-    final collected = <Track>[];
-
-    void addTracks(Iterable<Track> tracks) {
-      collected.addAll(tracks.where((track) => track.title.isNotEmpty));
-    }
-
-    void publish({bool loading = true}) {
-      if (!mounted || gen != _generation) return;
-      final seen = <String>{};
-      final merged = <Track>[
-        ...collected,
-        ..._preferenceTracks,
-      ].where((track) => seen.add(track.key)).toList();
-      setState(() {
-        _preferenceTracks = merged;
-        _preferenceTracksLoading = loading;
-      });
-    }
-
-    try {
-      if (localFavorites != null) {
-        addTracks(localFavorites.tracks ?? const <Track>[]);
-        final cacheKey = 'home.guess.favorites.v2.${localFavorites.id}';
-        final cached = session.peekPage(cacheKey, PlaylistBox.fromJson);
-        addTracks(cached?.playlist?.tracks ?? const <Track>[]);
-        publish();
-
-        final favoriteBox = await session.fetchPage(
-          '/api/my/playlists/${Uri.encodeComponent(localFavorites.id)}',
-          cacheKey: cacheKey,
-          factory: PlaylistBox.fromJson,
-        );
-        addTracks(favoriteBox?.playlist?.tracks ?? const <Track>[]);
-        publish();
-      }
-
-      var libraries =
-          session.peekPage('library.browse.lib', LibraryPayload.fromJson);
-      final fetchedLibraries = await session.fetchPage(
-          '/api/me/libraries/playlists',
-          cacheKey: 'library.browse.lib',
-          factory: LibraryPayload.fromJson);
-      libraries = fetchedLibraries ?? libraries;
-
-      final preferencePlaylists = <String, (String, Playlist)>{};
-      for (final entry
-          in (libraries?.groups ?? const <String, List<Playlist>>{}).entries) {
-        for (final playlist in entry.value) {
-          if (!_isLikedPlaylist(playlist)) continue;
-          final platform = playlist.platform ?? entry.key;
-          preferencePlaylists['$platform::${playlist.id}'] =
-              (platform, playlist);
-          addTracks(playlist.tracks ?? const <Track>[]);
-        }
-      }
-
-      var savedPlaylists = session.peekPage('home.guess.savedPlaylists',
-          (data) => ItemsBox.fromJson(data, Playlist.fromJson));
-      final fetchedSavedPlaylists = await session.fetchPage(
-          '/api/my/favorites/items?kind=playlist',
-          cacheKey: 'home.guess.savedPlaylists',
-          factory: (data) => ItemsBox.fromJson(data, Playlist.fromJson));
-      savedPlaylists = fetchedSavedPlaylists ?? savedPlaylists;
-      for (final playlist in savedPlaylists?.items ?? const <Playlist>[]) {
-        final platform = playlist.platform ?? '';
-        if (platform.isEmpty || platform == 'local') continue;
-        preferencePlaylists['$platform::${playlist.id}'] = (platform, playlist);
-        addTracks(playlist.tracks ?? const <Track>[]);
-      }
-      publish();
-
-      final details =
-          await Future.wait(preferencePlaylists.values.take(8).map((entry) {
-        final platform = entry.$1;
-        final playlist = entry.$2;
-        return session.fetchFullPlatformPlaylist(
-          platform,
-          playlist.id,
-          cacheKey: 'home.guess.liked.$platform.${playlist.id}',
-        );
-      }));
-      for (final playlist in details) {
-        addTracks(playlist?.tracks ?? const <Track>[]);
-      }
-    } finally {
-      publish(loading: false);
-    }
-  }
-
-  bool _isLikedPlaylist(Playlist playlist) {
-    final kind =
-        '${playlist.kind ?? ''} ${playlist.listKind ?? ''}'.toLowerCase();
-    if (playlist.id.toLowerCase() == 'liked' ||
-        kind.contains('liked') ||
-        kind.contains('favorite')) {
-      return true;
-    }
-    final title =
-        '${playlist.name ?? ''} ${playlist.title ?? ''}'.toLowerCase();
-    return title.contains('我喜欢') ||
-        title.contains('喜欢的') ||
-        title.contains('收藏的歌曲') ||
-        title.contains('红心') ||
-        title.contains('liked songs') ||
-        title.contains('favorites');
-  }
-
-  Iterable<Track> _tracksIn(_ShelfState? state) sync* {
-    final row = state?.row;
-    if (row == null) return;
-    yield* row.tracks;
-    for (final item in row.items) {
-      yield* item.tracks ?? const <Track>[];
-    }
-    for (final section in row.sections) {
-      for (final item in section.items) {
-        yield* item.tracks ?? const <Track>[];
-      }
-    }
-  }
-
-  List<Track> get _guessTracks {
-    final seen = <String>{};
-    return <Track>[
-      if (_tracksIn(_shelves['guess']).isNotEmpty)
-        ..._tracksIn(_shelves['guess'])
-      else ...[
-        ..._preferenceTracks,
-        ..._tracksIn(_shelves['taste']),
-        ..._tracksIn(_shelves['daily']),
-      ],
-    ].where((track) => track.title.isNotEmpty && seen.add(track.key)).toList();
-  }
+  List<Track> get _guessTracks => _shelves['guess']?.row.tracks ?? const [];
 
   Future<void> _loadShelf(String id, String layout, int gen) async {
-    if (id == 'guess') {
-      await _loadGuessShelf(layout, gen);
-      return;
-    }
     final st = _shelves[id];
     if (st != null && st.loadedAt != null && !st.failed) {
       final fresh = DateTime.now().difference(st.loadedAt!).inSeconds < 45;
@@ -304,69 +156,6 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
-  Future<void> _loadGuessShelf(String layout, int gen) async {
-    const pageSize = 100;
-    final session = context.read<SessionStore>();
-    final tracks = <Track>[];
-    final trackKeys = <String>{};
-    final visitedOffsets = <int>{};
-    var offset = 0;
-    var loadedPage = false;
-    var failed = false;
-
-    while (visitedOffsets.add(offset)) {
-      final query =
-          offset == 0 ? 'limit=$pageSize' : 'limit=$pageSize&offset=$offset';
-      final page = await session.fetchPage(
-        '/api/guess-you-like?$query',
-        cacheKey: 'home.guess.page.$offset',
-        factory: GuessYouLikePage.fromJson,
-      );
-      if (!mounted || gen != _generation) return;
-      if (page == null) {
-        failed = true;
-        break;
-      }
-
-      loadedPage = true;
-      final previousCount = tracks.length;
-      for (final track in page.tracks) {
-        if (track.title.isNotEmpty && trackKeys.add(track.key)) {
-          tracks.add(track);
-        }
-      }
-      final nextOffset = page.nextOffset ?? offset + page.tracks.length;
-      final hasNextPage = page.hasMore &&
-          page.tracks.isNotEmpty &&
-          tracks.length > previousCount &&
-          nextOffset > offset;
-
-      setState(() {
-        _shelves['guess'] = _ShelfState(
-          ShelfRow(id: 'guess', layout: layout, tracks: List.of(tracks)),
-          loading: hasNextPage,
-          loadedAt: hasNextPage ? null : DateTime.now(),
-        );
-      });
-      if (!hasNextPage) break;
-      offset = nextOffset;
-    }
-
-    if (!mounted || gen != _generation) return;
-    if (!loadedPage) {
-      setState(() {
-        _shelves['guess']?.loading = false;
-        _shelves['guess']?.failed = true;
-      });
-      return;
-    }
-    setState(() {
-      _shelves['guess']?.loading = false;
-      _shelves['guess']?.failed = failed;
-      _shelves['guess']?.loadedAt = DateTime.now();
-    });
-  }
-
   Future<void> _refresh() => _runLoad(refresh: true);
 
   Future<void> _runLoad({bool refresh = false}) {
@@ -378,7 +167,6 @@ class _HomeViewState extends State<HomeView> {
     if (refresh) setState(() {
       _refreshing = true;
       _generation++;
-      _preferenceTracksLoading = true;
       for (final st in _shelves.values) {
         st.loadedAt = null;
         st.failed = false;
@@ -397,7 +185,6 @@ class _HomeViewState extends State<HomeView> {
     } finally {
       if (mounted) setState(() {
         _refreshing = false;
-        _preferenceTracksLoading = false;
         for (final st in _shelves.values) { st.loading = false; }
       });
     }
@@ -453,8 +240,7 @@ class _HomeViewState extends State<HomeView> {
       _ShelfSection(
         state: st,
         guessTracks: id == 'daily' ? _guessTracks : const [],
-        guessLoading: id == 'daily' &&
-            ((_shelves['guess']?.loading ?? true) || _preferenceTracksLoading),
+        guessLoading: id == 'daily' && (_shelves['guess']?.loading ?? true),
       ),
       if (id == 'daily' && _dailyMix != null) _dailyMixEntry(_dailyMix!),
     ];
@@ -691,7 +477,7 @@ class _GuessPlaylistCard extends StatelessWidget {
                             fontSize: 20,
                             fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
-                    Text('根据你的收藏与喜欢生成 · ${tracks.length} 首歌曲',
+                    Text('来自音乐平台的个性化推荐 · ${tracks.length} 首歌曲',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
