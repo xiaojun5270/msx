@@ -87,7 +87,7 @@ void main() {
     await tester.pumpWidget(app(StatefulBuilder(builder: (_, setState) {
       update = setState;
       return Center(
-          child: MusicGlassPanel(
+          child: MusicGlassPanel.card(
               child: MusicGlassSwitch(
                   value: value,
                   onChanged:

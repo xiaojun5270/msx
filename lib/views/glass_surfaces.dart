@@ -42,7 +42,7 @@ class MusicGlassPanel extends StatelessWidget {
             glassColor: dark
                 ? const Color.fromRGBO(30, 26, 33, 0.68)
                 : const Color.fromRGBO(255, 255, 255, 0.72),
-            bodyMode: GlassBodyMode.adaptive,
+            bodyMode: GlassBodyMode.clear,
             blur: 18,
           )
         : playerGlassSettings(context);
@@ -64,24 +64,28 @@ class MusicGlassPanel extends StatelessWidget {
         Padding(padding: padding, child: child),
       ]);
     }
+    final glass = GlassContainer(
+      useOwnLayer: true,
+      quality: quality,
+      shape: LiquidRoundedSuperellipse(borderRadius: radius),
+      // Force the component's live blur, fixed tint and vector rim for cards.
+      // Its shader fallback draws a different tint when shader resources are
+      // unavailable, which makes scrolling cards change colour on device.
+      platformViewBackdrop: _frosted,
+      settings: _frosted ? settings : settings.copyWith(blur: 0),
+      child: const SizedBox.expand(),
+    );
     return Stack(children: [
       Positioned.fill(
           child: IgnorePointer(
-              // The engine owns the live blur. The library draws the glass
-              // material above it, so its quality fallback cannot remove blur
-              // during scrolling or replace it with a cached tinted surface.
-              child: ClipRSuperellipse(
-                  borderRadius: BorderRadius.circular(radius),
-                  child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(
-                          sigmaX: settings.blur, sigmaY: settings.blur),
-                      child: GlassContainer(
-                        useOwnLayer: true,
-                        quality: quality,
-                        shape: LiquidRoundedSuperellipse(borderRadius: radius),
-                        settings: settings.copyWith(blur: 0),
-                        child: const SizedBox.expand(),
-                      ))))),
+              child: _frosted
+                  ? glass
+                  : ClipRSuperellipse(
+                      borderRadius: BorderRadius.circular(radius),
+                      child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(
+                              sigmaX: settings.blur, sigmaY: settings.blur),
+                          child: glass)))),
       Padding(padding: padding, child: child),
     ]);
   }
