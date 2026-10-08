@@ -196,6 +196,7 @@ class _AccountViewState extends State<AccountView> {
         backgroundColor: MX.panel,
         onRefresh: _load,
         child: ListView(
+          addRepaintBoundaries: false,
           padding: EdgeInsets.fromLTRB(
               16, 12, 16, MediaQuery.paddingOf(context).bottom),
           children: [

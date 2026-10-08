@@ -347,6 +347,7 @@ class _SettingsViewState extends State<SettingsView> {
     return _settingsScaffold(
       '设置',
       ListView(
+        addRepaintBoundaries: false,
         padding: EdgeInsets.fromLTRB(16, 12, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _group(
@@ -901,6 +902,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
     return _settingsScaffold(
       '个人资料',
       ListView(
+        addRepaintBoundaries: false,
         padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _Card(
@@ -1265,6 +1267,7 @@ class _AutomationViewState extends State<AutomationView> {
     return _settingsScaffold(
       '自动化',
       ListView(
+        addRepaintBoundaries: false,
         padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _cookieCloudCard(),
@@ -1846,6 +1849,7 @@ class _PlatformSettingsViewState extends State<PlatformSettingsView> {
     return _settingsScaffold(
       MX.label(id),
       ListView(
+        addRepaintBoundaries: false,
         padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _headerCard(tone),
@@ -2325,6 +2329,7 @@ class _CustomSourcesViewState extends State<CustomSourcesView> {
     return _settingsScaffold(
       'LX 自定义音源',
       ListView(
+        addRepaintBoundaries: false,
         padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
         children: [
           _Card(

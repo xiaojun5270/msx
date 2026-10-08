@@ -304,7 +304,7 @@ class LiquidDock extends StatelessWidget {
           selectedLabelColor: ThemeAccent.current.color,
           unselectedIconColor: Theme.of(context).colorScheme.onSurface,
           unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
-          quality: GlassQuality.premium,
+          quality: playerGlassQuality(context),
           settings: playerGlassSettings(context),
           indicatorSettings: playerGlassSettings(context),
           indicatorColor: Colors.white.withValues(alpha: 0.08),

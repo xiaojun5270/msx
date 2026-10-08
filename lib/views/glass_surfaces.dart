@@ -14,7 +14,7 @@ class MusicGlassPanel extends StatelessWidget {
   final double radius;
   final GlassQuality quality;
   final bool refractBackground;
-  final bool _frosted;
+  final bool _isCard;
   const MusicGlassPanel(
       {super.key,
       required this.child,
@@ -22,30 +22,22 @@ class MusicGlassPanel extends StatelessWidget {
       this.radius = 24,
       this.quality = GlassQuality.standard,
       this.refractBackground = false})
-      : _frosted = false;
+      : _isCard = false;
 
-  /// Readable liquid glass material for profile and settings content.
+  /// Use the navigation bar's neutral material and grouped rendering path.
   const MusicGlassPanel.card(
       {super.key,
       required this.child,
       this.padding = EdgeInsets.zero,
       this.radius = 24,
-      this.quality = GlassQuality.standard})
+      this.quality = GlassQuality.premium})
       : refractBackground = true,
-        _frosted = true;
+        _isCard = true;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final settings = _frosted
-        ? playerGlassSettings(context).copyWith(
-            glassColor: dark
-                ? const Color.fromRGBO(30, 26, 33, 0.68)
-                : const Color.fromRGBO(255, 255, 255, 0.72),
-            bodyMode: GlassBodyMode.clear,
-            blur: 18,
-          )
-        : playerGlassSettings(context);
+    final settings = playerGlassSettings(context);
     // The default panel has a clear, non-sampling surface. BackdropFilter inside
     // scrollable repaint boundaries can appear/disappear on device compositors.
     // Do not merely set sigma to zero: avoid both the filter and shader path.
@@ -64,28 +56,43 @@ class MusicGlassPanel extends StatelessWidget {
         Padding(padding: padding, child: child),
       ]);
     }
+    if (_isCard) {
+      final resolvedQuality = playerGlassQuality(context, requested: quality);
+      return AdaptiveLiquidGlassLayer(
+        settings: settings,
+        quality: resolvedQuality,
+        child: Stack(children: [
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: IgnorePointer(
+                child: AdaptiveGlass.grouped(
+                  shape: LiquidRoundedRectangle(borderRadius: radius),
+                  quality: resolvedQuality,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+          ),
+          Padding(padding: padding, child: child),
+        ]),
+      );
+    }
     final glass = GlassContainer(
       useOwnLayer: true,
       quality: quality,
       shape: LiquidRoundedSuperellipse(borderRadius: radius),
-      // Force the component's live blur, fixed tint and vector rim for cards.
-      // Its shader fallback draws a different tint when shader resources are
-      // unavailable, which makes scrolling cards change colour on device.
-      platformViewBackdrop: _frosted,
-      settings: _frosted ? settings : settings.copyWith(blur: 0),
+      settings: settings.copyWith(blur: 0),
       child: const SizedBox.expand(),
     );
     return Stack(children: [
       Positioned.fill(
           child: IgnorePointer(
-              child: _frosted
-                  ? glass
-                  : ClipRSuperellipse(
-                      borderRadius: BorderRadius.circular(radius),
-                      child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(
-                              sigmaX: settings.blur, sigmaY: settings.blur),
-                          child: glass)))),
+              child: ClipRSuperellipse(
+                  borderRadius: BorderRadius.circular(radius),
+                  child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(
+                          sigmaX: settings.blur, sigmaY: settings.blur),
+                      child: glass)))),
       Padding(padding: padding, child: child),
     ]);
   }

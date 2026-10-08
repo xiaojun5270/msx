@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+/// Resolve the same adaptive quality for navigation and page glass surfaces.
+GlassQuality playerGlassQuality(BuildContext context,
+    {GlassQuality requested = GlassQuality.premium}) {
+  final ceiling = GlassAdaptiveScopeData.maybeOf(context)?.effectiveQuality;
+  int rank(GlassQuality value) => switch (value) {
+        GlassQuality.minimal => 0,
+        GlassQuality.standard => 1,
+        GlassQuality.premium => 2,
+      };
+  return ceiling != null && rank(ceiling) < rank(requested)
+      ? ceiling
+      : requested;
+}
+
 /// Shared, neutral material for the floating playback controls and dock.
 /// No body tint: the lens samples the current page rather than a fixed fill.
 LiquidGlassSettings playerGlassSettings(BuildContext context) {
