@@ -213,7 +213,7 @@ void main() {
         .widget<RefreshIndicator>(find.byType(RefreshIndicator))
         .onRefresh();
     await tester.pumpAndSettle();
-    expect(find.text('猜你喜欢'), findsNothing);
+    expect(find.text('猜你喜欢'), findsWidgets);
     expect(player.queue, isEmpty);
     expect(
         api.paths.where((path) => path.contains('guess')), ['/api/home/guess']);
@@ -252,7 +252,7 @@ void main() {
       (tester) async {
     final api = _HomeAPI()..failGuess = true;
     await _openHome(tester, api: api);
-    expect(find.text('猜你喜欢'), findsNothing);
+    expect(find.text('猜你喜欢'), findsWidgets);
     expect(find.text('重试'), findsOneWidget);
     api.failGuess = false;
     await tester.tap(find.text('重试'));

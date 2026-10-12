@@ -439,14 +439,17 @@ class _GuessPlaylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final playback = context
-        .select<PlayerStore, ({List<Track> queue, bool playing, bool loading})>(
-      (player) => (
-        queue: player.queue,
-        playing: player.playing,
-        loading: player.loading,
-      ),
-    );
+    final playback = tracks.isEmpty
+        ? (queue: <Track>[], playing: false, loading: false)
+        : context.select<
+            PlayerStore,
+            ({List<Track> queue, bool playing, bool loading})>(
+            (player) => (
+              queue: player.queue,
+              playing: player.playing,
+              loading: player.loading,
+            ),
+          );
     final active = _matchesQueue(tracks, playback.queue);
     final playing = active && playback.playing;
     final loading = active && playback.loading;
@@ -462,7 +465,7 @@ class _GuessPlaylistCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               CoverArt(
-                src: tracks.first.cover,
+                src: tracks.isNotEmpty ? tracks.first.cover : null,
                 mosaic: tracks
                     .map((track) => track.cover ?? '')
                     .where((cover) => cover.isNotEmpty)
@@ -627,7 +630,7 @@ class _ShelfSection extends StatelessWidget {
 
   ShelfRow get row => state.row;
   bool get _hasGuessCard =>
-      row.id == 'daily' && (guessTracks.isNotEmpty || guessLoading);
+      row.id == 'daily';
 
   @override
   Widget build(BuildContext context) {
@@ -731,9 +734,6 @@ class _ShelfSection extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 16),
         itemBuilder: (_, i) {
           if (_hasGuessCard && i == 0) {
-            if (guessTracks.isEmpty) {
-              return SkeletonBar(width: width, height: height, corner: 12);
-            }
             return _GuessPlaylistCard(
                 tracks: guessTracks,
                 feed: guessFeed,
