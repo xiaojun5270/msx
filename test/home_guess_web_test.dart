@@ -56,6 +56,19 @@ class _HomeAPI extends APIClient {
       'result': {'status': 'ok', 'data': data},
     });
   }
+
+  @override
+  Future<T> getJson<T>(
+      String path, T Function(Map<String, dynamic>) factory) async {
+    paths.add(path);
+    if (path.startsWith('/api/guess-you-like')) {
+      final data = guessResponses.length > 1
+          ? guessResponses.removeAt(0)
+          : guessResponses.single;
+      return factory(data) as T;
+    }
+    return super.getJson(path, factory);
+  }
 }
 
 class _HomeSession extends ChangeNotifier implements SessionStore {
@@ -174,12 +187,12 @@ void main() {
         }
       ];
     final (session, player) = await _openHome(tester, api: api);
-    expect(
-        api.paths.where((path) => path.contains('guess')), ['/api/home/guess']);
-    expect(
-        session.pages.any((path) => path.contains('guess-you-like')), isFalse);
+    expect(api.paths.where((path) => path == '/api/home/guess'),
+        ['/api/home/guess']);
     await tester.tap(find.byTooltip('播放'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(api.paths.where((path) => path.startsWith('/api/guess-you-like')),
+        ['/api/guess-you-like?limit=24&offset=0']);
     expect(player.queue.map((track) => track.key),
         ['qqmusic::web-qq', 'kugou::web-kugou']);
     expect(find.text('来自音乐平台的个性化推荐 · 2 首歌曲'), findsOneWidget);

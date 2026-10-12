@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../models/models.dart';
 import '../stores/player_store.dart';
+import '../stores/guess_feed.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/route.dart';
@@ -46,6 +47,7 @@ class _HomeViewState extends State<HomeView> {
   ];
 
   final Map<String, _ShelfState> _shelves = {};
+  late final GuessFeed _guessFeed;
   Playlist? _dailyMix;
   int _generation = 0;
   Future<void>? _loadTask;
@@ -54,6 +56,8 @@ class _HomeViewState extends State<HomeView> {
   @override
   void initState() {
     super.initState();
+    _guessFeed = GuessFeed(context.read<SessionStore>())
+      ..addListener(_onGuessFeedChanged);
     for (final (id, layout) in _kinds) {
       final cached = context.read<SessionStore>().local.homeRaw(id);
       final row = cached != null
@@ -63,6 +67,18 @@ class _HomeViewState extends State<HomeView> {
           loading: row.empty, loadedAt: cached != null ? DateTime.now() : null);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _runLoad());
+  }
+
+  void _onGuessFeedChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _guessFeed
+      ..removeListener(_onGuessFeedChanged)
+      ..dispose();
+    super.dispose();
   }
 
   ShelfRow _rowFromRaw(String id, String layout, String raw) {
@@ -109,7 +125,9 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
-  List<Track> get _guessTracks => _shelves['guess']?.row.tracks ?? const [];
+  List<Track> get _guessTracks => _guessFeed.tracks.isNotEmpty
+      ? _guessFeed.tracks
+      : (_shelves['guess']?.row.tracks ?? const []);
 
   Future<void> _loadShelf(String id, String layout, int gen) async {
     final st = _shelves[id];
@@ -240,7 +258,9 @@ class _HomeViewState extends State<HomeView> {
       _ShelfSection(
         state: st,
         guessTracks: id == 'daily' ? _guessTracks : const [],
-        guessLoading: id == 'daily' && (_shelves['guess']?.loading ?? true),
+        guessLoading: id == 'daily' &&
+            ((_shelves['guess']?.loading ?? true) || _guessFeed.loading),
+        guessFeed: id == 'daily' ? _guessFeed : null,
       ),
       if (id == 'daily' && _dailyMix != null) _dailyMixEntry(_dailyMix!),
     ];
@@ -372,40 +392,47 @@ class _HomeViewState extends State<HomeView> {
 
 class _GuessPlaylistCard extends StatelessWidget {
   final List<Track> tracks;
+  final GuessFeed? feed;
   final double width;
   final double height;
   const _GuessPlaylistCard({
     required this.tracks,
+    this.feed,
     required this.width,
     required this.height,
   });
 
-  bool _matchesQueue(List<Track> queue) {
-    if (queue.isEmpty || queue.length > tracks.length) return false;
+  bool _matchesQueue(List<Track> source, List<Track> queue) {
+    if (queue.isEmpty || queue.length > source.length) return false;
     for (var i = 0; i < queue.length; i++) {
-      if (queue[i].key != tracks[i].key) return false;
+      if (queue[i].key != source[i].key) return false;
     }
     return true;
   }
 
-  void _togglePlayback(BuildContext context) {
-    if (tracks.isEmpty) return;
+  Future<void> _togglePlayback(BuildContext context) async {
     final player = context.read<PlayerStore>();
-    if (_matchesQueue(player.queue)) {
+    var rows = tracks;
+    if (feed != null) {
+      await feed!.loadFirst();
+      rows = feed!.tracks;
+    }
+    if (rows.isEmpty) return;
+    if (_matchesQueue(rows, player.queue)) {
       player.toggle();
       return;
     }
     if (!player.shuffle) player.toggleShuffle();
-    final start = DateTime.now().microsecondsSinceEpoch % tracks.length;
+    final start = DateTime.now().microsecondsSinceEpoch % rows.length;
     player.replaceQueue(
-      tracks,
+      rows,
       start: start,
       source: PlaySource(
         kind: 'recommendation',
         platform: 'mixed',
         id: 'guess-you-like',
         title: '猜你喜欢',
-        trackCount: tracks.length,
+        trackCount: rows.length,
       ),
     );
   }
@@ -420,7 +447,7 @@ class _GuessPlaylistCard extends StatelessWidget {
         loading: player.loading,
       ),
     );
-    final active = _matchesQueue(playback.queue);
+    final active = _matchesQueue(tracks, playback.queue);
     final playing = active && playback.playing;
     final loading = active && playback.loading;
     return InkWell(
@@ -590,10 +617,12 @@ class _ShelfSection extends StatelessWidget {
   final _ShelfState state;
   final List<Track> guessTracks;
   final bool guessLoading;
+  final GuessFeed? guessFeed;
   const _ShelfSection({
     required this.state,
     this.guessTracks = const [],
     this.guessLoading = false,
+    this.guessFeed,
   });
 
   ShelfRow get row => state.row;
@@ -706,7 +735,10 @@ class _ShelfSection extends StatelessWidget {
               return SkeletonBar(width: width, height: height, corner: 12);
             }
             return _GuessPlaylistCard(
-                tracks: guessTracks, width: width, height: height);
+                tracks: guessTracks,
+                feed: guessFeed,
+                width: width,
+                height: height);
           }
           final itemIndex = i - (_hasGuessCard ? 1 : 0);
           return _HomeCard(

@@ -428,29 +428,76 @@ class RecommendBox {
       );
 }
 
-class GuessYouLikePage {
+class GuessYouLikeSource {
+  final String platform;
+  final String? label;
+  final String? kind;
+  final int? trackCount;
+  final String? itemId;
+
+  const GuessYouLikeSource({
+    required this.platform,
+    this.label,
+    this.kind,
+    this.trackCount,
+    this.itemId,
+  });
+
+  factory GuessYouLikeSource.fromJson(Map<String, dynamic> c) =>
+      GuessYouLikeSource(
+        platform: asString(c['platform']) ?? '',
+        label: asString(c['label']),
+        kind: asString(c['kind']),
+        trackCount: asInt(c['trackCount']),
+        itemId: flexIdOrNull(c['itemId']),
+      );
+}
+
+/// Mirrors Swift `GuessYouLikePayload` from `/api/guess-you-like`.
+class GuessYouLikePayload {
   final List<Track> tracks;
+  final String? title;
+  final List<GuessYouLikeSource> sources;
+  final List<String> platforms;
+  final bool? empty;
   final int? total;
   final bool hasMore;
   final int? nextOffset;
   final String? generatedAt;
 
-  const GuessYouLikePage({
+  const GuessYouLikePayload({
     this.tracks = const [],
+    this.title,
+    this.sources = const [],
+    this.platforms = const [],
+    this.empty,
     this.total,
     this.hasMore = false,
     this.nextOffset,
     this.generatedAt,
   });
 
-  factory GuessYouLikePage.fromJson(Map<String, dynamic> c) => GuessYouLikePage(
+  factory GuessYouLikePayload.fromJson(Map<String, dynamic> c) =>
+      GuessYouLikePayload(
         tracks: decodeList(c['tracks'], Track.fromJson),
+        title: asString(c['title']),
+        sources: decodeList(c['sources'], GuessYouLikeSource.fromJson),
+        platforms: c['platforms'] is List
+            ? (c['platforms'] as List)
+                .whereType<String>()
+                .where((v) => v.isNotEmpty)
+                .toList()
+            : const [],
+        empty: asBool(c['empty']),
         total: asInt(c['total']),
         hasMore: asBool(c['hasMore']) ?? false,
         nextOffset: asInt(c['nextOffset']),
         generatedAt: asString(c['generatedAt']),
       );
 }
+
+/// Backward-compatible name for callers that used the pre-paging model.
+typedef GuessYouLikePage = GuessYouLikePayload;
 
 class DiscoverPlaylists {
   final List<Playlist>? public;
