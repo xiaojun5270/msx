@@ -9,12 +9,15 @@ import 'session_store.dart';
 /// that need the full "猜你喜欢" list. The home shelf endpoint is only a
 /// display fallback; recommendation paging always uses `/api/guess-you-like`.
 ///
-/// Tracks that appear in the server play history (`/api/me/history`) are kept
-/// and never-played recommendations are dropped, mirroring the platform
-/// guess-you-like behaviour of surfacing familiar songs. If the history
-/// cannot be fetched the filter is disabled instead of emptying the feed.
-/// `loadFirst(loadAll: true)` keeps requesting 24-track pages sequentially
-/// until the server snapshot is exhausted.
+/// The stored list applies the played filter: tracks that appear in the
+/// server play history (`/api/me/history`) are kept and never-played
+/// recommendations are dropped. If the history cannot be fetched the filter
+/// is disabled instead of emptying the feed. `loadFirst(loadAll: true)`
+/// keeps requesting 24-track pages sequentially until the server snapshot
+/// is exhausted.
+///
+/// Radio playback ([fetchRandom]) deliberately ignores the played filter and
+/// roams the full server pool, one fresh random request per song.
 class GuessFeed extends ChangeNotifier {
   final SessionStore session;
 
@@ -191,20 +194,13 @@ class GuessFeed extends ChangeNotifier {
 
   int? _poolTotal;
 
-  /// Radio-style pick: fetch one random track that survives the played
-  /// filter, freshly requested from the recommendation endpoint. Tries a few
-  /// random offsets first, then sweeps the whole snapshot as a fallback.
-  /// [avoidKeys] (queue contents + current track) are skipped; when every
-  /// played track is excluded the exclusion is dropped so the radio can
-  /// repeat instead of dying.
+  /// Radio-style pick: fetch one random track from the FULL server
+  /// recommendation pool (the played filter does not apply here), freshly
+  /// requested from the recommendation endpoint. Tries a few random offsets
+  /// first, then sweeps the whole snapshot as a fallback. [avoidKeys]
+  /// (queue contents + current track) are never returned so the radio does
+  /// not repeat a song it already queued this session.
   Future<Track?> fetchRandom({Set<String> avoidKeys = const {}}) async {
-    await _ensurePlayedKeys();
-    final picked = await _fetchRandomFiltered(avoidKeys);
-    if (picked != null || avoidKeys.isEmpty) return picked;
-    return _fetchRandomFiltered(const {});
-  }
-
-  Future<Track?> _fetchRandomFiltered(Set<String> avoidKeys) async {
     final rng = Random();
     for (var attempt = 0; attempt < 4; attempt++) {
       final total = _poolTotal;
@@ -213,7 +209,7 @@ class GuessFeed extends ChangeNotifier {
             total != null && total > 24 ? rng.nextInt(total - 24 + 1) : 0;
         final page = await _request(offset: offset);
         if (page.total != null) _poolTotal = page.total;
-        final fresh = _fresh(page.tracks, avoidKeys);
+        final fresh = _radioCandidates(page.tracks, avoidKeys);
         if (fresh.isNotEmpty) {
           return fresh[rng.nextInt(fresh.length)];
         }
@@ -227,7 +223,7 @@ class GuessFeed extends ChangeNotifier {
       for (var page = 0; page < 12; page++) {
         final p = await _request(offset: offset, exclude: avoidKeys);
         if (p.total != null) _poolTotal = p.total;
-        candidates.addAll(_fresh(p.tracks, avoidKeys));
+        candidates.addAll(_radioCandidates(p.tracks, avoidKeys));
         if (!p.hasMore) break;
         final nextOffset = p.nextOffset ?? offset + p.tracks.length;
         if (nextOffset <= offset) break;
@@ -238,6 +234,14 @@ class GuessFeed extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  List<Track> _radioCandidates(Iterable<Track> rows, Set<String> avoidKeys) {
+    final seen = <String>{...avoidKeys};
+    return rows
+        .where((track) => track.id.isNotEmpty && track.title.isNotEmpty)
+        .where((track) => seen.add(track.key))
+        .toList();
   }
 
   Future<GuessYouLikePayload> _request({

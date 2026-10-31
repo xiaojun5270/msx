@@ -134,26 +134,25 @@ void main() {
     expect(feed.tracks.map((track) => track.key), ['qqmusic::a']);
   });
 
-  test('fetchRandom keeps only played tracks and honours avoidKeys', () async {
+  test('fetchRandom roams the full pool and honours avoidKeys', () async {
     final api = _GuessAPI([
       {
         'tracks': [
-          {'id': 'a', 'platform': 'qqmusic', 'title': 'A'},
+          {'id': 'a', 'platform': 'qqmusic', 'title': 'A played before'},
           {'id': 'c', 'platform': 'qqmusic', 'title': 'C unplayed'},
         ],
         'hasMore': false,
       },
-    ], historyPages: [
-      [
-        {'id': 'a', 'platform': 'qqmusic', 'title': 'A'},
-      ],
     ]);
     final feed = GuessFeed(_GuessSession(api));
 
     final picked = await feed.fetchRandom();
-    expect(picked?.key, 'qqmusic::a');
+    expect(['qqmusic::a', 'qqmusic::c'], contains(picked?.key));
 
-    final avoided = await feed.fetchRandom(avoidKeys: {'qqmusic::a'});
+    final avoided = await feed.fetchRandom(avoidKeys: {
+      'qqmusic::a',
+      'qqmusic::c',
+    });
     expect(avoided, isNull);
   });
 
