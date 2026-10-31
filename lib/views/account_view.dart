@@ -23,6 +23,7 @@ class AccountView extends StatefulWidget {
 class _AccountViewState extends State<AccountView> {
   List<Playlist> _playlists = [];
   List<(String, List<Playlist>)> _platformGroups = [];
+  final Set<String> _expandedPlatformGroups = {};
   int _subscriptionCount = 0;
   bool _creatingPlaylist = false;
 
@@ -463,40 +464,58 @@ class _AccountViewState extends State<AccountView> {
           for (final group in _platformGroups) ...[
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                          color: MX.tone(group.$1), shape: BoxShape.circle)),
-                  const SizedBox(width: 7),
-                  Text(MX.label(group.$1),
-                      style: TextStyle(
-                          color: MX.fg,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 6),
-                  Text('${group.$2.length} 个',
-                      style: TextStyle(color: MX.mute, fontSize: 12)),
-                ],
-              ),
-            ),
-            _glassPanel(
-              child: Column(
-                children: [
-                  for (var i = 0; i < group.$2.length; i++) ...[
-                    _playlistRow(
-                        ui, group.$2[i], MX.label(group.$1), MX.tone(group.$1)),
-                    if (i < group.$2.length - 1)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 80),
-                        child: Divider(color: MX.hairline, height: 1),
-                      ),
+              child: InkWell(
+                onTap: () => setState(() {
+                  if (!_expandedPlatformGroups.add(group.$1)) {
+                    _expandedPlatformGroups.remove(group.$1);
+                  }
+                }),
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  children: [
+                    Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                            color: MX.tone(group.$1), shape: BoxShape.circle)),
+                    const SizedBox(width: 7),
+                    Text(MX.label(group.$1),
+                        style: TextStyle(
+                            color: MX.fg,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 6),
+                    Text('${group.$2.length} 个',
+                        style: TextStyle(color: MX.mute, fontSize: 12)),
+                    const Spacer(),
+                    AnimatedRotation(
+                      turns: _expandedPlatformGroups.contains(group.$1)
+                          ? 0.5
+                          : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child:
+                          Icon(Icons.expand_more, size: 18, color: MX.mute),
+                    ),
                   ],
-                ],
+                ),
               ),
             ),
+            if (_expandedPlatformGroups.contains(group.$1))
+              _glassPanel(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < group.$2.length; i++) ...[
+                      _playlistRow(ui, group.$2[i], MX.label(group.$1),
+                          MX.tone(group.$1)),
+                      if (i < group.$2.length - 1)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 80),
+                          child: Divider(color: MX.hairline, height: 1),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
             const SizedBox(height: 16),
           ],
       ],
