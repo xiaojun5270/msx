@@ -52,9 +52,8 @@ class MusixAudioHandler extends BaseAudioHandler {
     };
     playbackState.add(playbackState.value.copyWith(
       controls: [
-        MediaControl.skipToPrevious,
-        if (playing) MediaControl.pause else MediaControl.play,
-        MediaControl.skipToNext,
+        // Favorite first: Android 13+ media cards place the first custom
+        // action in the leftmost slot, next to the transport controls.
         MediaControl.custom(
           androidIcon: favorited
               ? 'drawable/ic_favorite_filled'
@@ -62,6 +61,9 @@ class MusixAudioHandler extends BaseAudioHandler {
           label: favorited ? '取消收藏' : '收藏',
           name: _favoriteAction,
         ),
+        MediaControl.skipToPrevious,
+        if (playing) MediaControl.pause else MediaControl.play,
+        MediaControl.skipToNext,
       ],
       systemActions: const {
         MediaAction.seek,
@@ -72,7 +74,7 @@ class MusixAudioHandler extends BaseAudioHandler {
         MediaAction.skipToNext,
         MediaAction.skipToPrevious,
       },
-      androidCompactActionIndices: const [0, 1, 2],
+      androidCompactActionIndices: const [1, 2, 3],
       processingState: processingMap[engine.processingState]!,
       playing: playing,
       updatePosition: engine.position,
