@@ -464,19 +464,21 @@ class _GuessPlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playback = tracks.isEmpty
-        ? (radio: false, playing: false, loading: false)
+        ? (radio: false, playing: false, loading: false, cover: null as String?)
         : context.select<
             PlayerStore,
-            ({bool radio, bool playing, bool loading})>(
+            ({bool radio, bool playing, bool loading, String? cover})>(
             (player) => (
               radio: player.activeSource?.id == 'guess-you-like',
               playing: player.playing,
               loading: player.loading,
+              cover: player.track?.cover,
             ),
           );
     final active = playback.radio;
     final playing = active && playback.playing;
     final loading = active && playback.loading;
+    final cover = active ? playback.cover : null;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () => _togglePlayback(context),
@@ -489,7 +491,7 @@ class _GuessPlaylistCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               CoverArt(
-                src: tracks.isNotEmpty ? tracks.first.cover : null,
+                src: cover ?? (tracks.isNotEmpty ? tracks.first.cover : null),
                 mosaic: tracks
                     .map((track) => track.cover ?? '')
                     .where((cover) => cover.isNotEmpty)

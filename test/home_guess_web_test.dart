@@ -115,6 +115,8 @@ class _HomePlayer extends ChangeNotifier implements PlayerStore {
   @override
   Future<Track?> Function(String? avoidKey)? radioFetchNext;
   @override
+  Track? get track => null;
+  @override
   bool get playing => false;
   @override
   bool get loading => false;
