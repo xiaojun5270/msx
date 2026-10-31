@@ -111,6 +111,10 @@ class _HomePlayer extends ChangeNotifier implements PlayerStore {
   @override
   List<Track> queue = [];
   @override
+  PlaySource? activeSource;
+  @override
+  Future<Track?> Function(String? avoidKey)? radioFetchNext;
+  @override
   bool get playing => false;
   @override
   bool get loading => false;
@@ -122,6 +126,7 @@ class _HomePlayer extends ChangeNotifier implements PlayerStore {
   Future<void> replaceQueue(List<Track> tracks,
       {required int start, PlaySource? source}) async {
     queue = List.of(tracks);
+    activeSource = source;
     notifyListeners();
   }
 
@@ -193,8 +198,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.paths.where((path) => path.startsWith('/api/guess-you-like')),
         ['/api/guess-you-like?limit=24&offset=0']);
-    expect(player.queue.map((track) => track.key),
-        ['qqmusic::web-qq', 'kugou::web-kugou']);
+    expect(player.queue, hasLength(1));
+    expect(['qqmusic::web-qq', 'kugou::web-kugou'],
+        contains(player.queue.single.key));
     expect(find.text('来自音乐平台的个性化推荐 · 2 首歌曲'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(tester.takeException(), isNull);

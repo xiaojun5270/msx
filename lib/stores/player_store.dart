@@ -607,6 +607,17 @@ class PlayerStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Active playback source of the current queue (null after restore/clear).
+  PlaySource? activeSource;
+
+  /// Radio extension hook: for radio-style sources (猜你喜欢) the queue grows
+  /// one track at a time — the app layer fetches the next random track here.
+  /// Return null when nothing more is available.
+  Future<Track?> Function(String? avoidKey)? radioFetchNext;
+  bool _radioFetching = false;
+
+  bool get _isRadioSource => activeSource?.kind == 'recommendation';
+
   Future<void> replaceQueue(List<Track> tracks,
       {required int start, PlaySource? source}) async {
     final items =
@@ -616,6 +627,7 @@ class PlayerStore extends ChangeNotifier {
     final reuses = _canReuseCurrentPlayback(items[i]);
     queue = items;
     index = i;
+    activeSource = source;
     _rebuildShuffle(anchor: i);
     _persist();
     notifyListeners();
@@ -671,6 +683,7 @@ class PlayerStore extends ChangeNotifier {
     _token += 1;
     _lyricsToken += 1;
     _setWantsPlayback(false);
+    activeSource = null;
 
     for (final timer in _retainedExpiry.values) {
       timer.cancel();
@@ -1428,6 +1441,8 @@ class PlayerStore extends ChangeNotifier {
       }
     }
 
+    if (autoplay && await _radioFetchAndPlay()) return;
+
     LocalLogStore.shared.warn(
       AppLogCategory.player,
       'playback.auto_skip_exhausted',
@@ -1487,6 +1502,9 @@ class PlayerStore extends ChangeNotifier {
 
   Future<void> _advance({required bool fromEnd}) async {
     if (queue.isEmpty) return;
+    if (_isRadioSource && index >= queue.length - 1) {
+      if (await _radioFetchAndPlay()) return;
+    }
     if (shuffle) {
       final pos = _shuffleSeq.indexOf(index);
       if (pos >= 0) {
@@ -1519,6 +1537,43 @@ class PlayerStore extends ChangeNotifier {
       await _av.pause();
       _publishNowPlaying();
       notifyListeners();
+    }
+  }
+
+  /// Radio sources (猜你喜欢) grow the queue one track at a time: fetch the
+  /// next random track via [radioFetchNext], append it, and start playing.
+  Future<bool> _radioFetchAndPlay() async {
+    final fetch = radioFetchNext;
+    if (!_isRadioSource || fetch == null) return false;
+    if (_radioFetching) return true;
+    _radioFetching = true;
+    try {
+      var avoid = track?.key;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final next = await fetch(avoid);
+        if (next == null) return false;
+        if (_failedPlaybackKeys.contains(next.key)) {
+          avoid = next.key;
+          continue;
+        }
+        queue = [...queue, next];
+        _rebuildShuffle(anchor: index);
+        _persist();
+        _preheatQueueDidChange();
+        notifyListeners();
+        await _playAt(queue.length - 1);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      LocalLogStore.shared.warn(
+        AppLogCategory.player,
+        'playback.radio_fetch_failed',
+        fields: {'error': e.toString()},
+      );
+      return false;
+    } finally {
+      _radioFetching = false;
     }
   }
 

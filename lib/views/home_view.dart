@@ -414,8 +414,32 @@ class _GuessPlaylistCard extends StatelessWidget {
     final player = context.read<PlayerStore>();
     var rows = tracks;
     if (feed != null) {
-      await feed!.loadFirst();
-      rows = feed!.tracks;
+      // 电台式播放：每次播放/下一首都向服务端随机取一首（只保留播放过的），
+      // 队列随之逐首增长，而不是把固定列表装进队列洗牌。
+      if (player.activeSource?.id == 'guess-you-like') {
+        player.toggle();
+        return;
+      }
+      player.radioFetchNext = (avoidKey) {
+        final avoid = <String>{
+          if (avoidKey != null) avoidKey,
+          ...player.queue.map((track) => track.key),
+        };
+        return feed!.fetchRandom(avoidKeys: avoid);
+      };
+      final first = await feed!.fetchRandom();
+      if (first == null) return;
+      await player.replaceQueue(
+        [first],
+        start: 0,
+        source: PlaySource(
+          kind: 'recommendation',
+          platform: 'mixed',
+          id: 'guess-you-like',
+          title: '猜你喜欢',
+        ),
+      );
+      return;
     }
     if (rows.isEmpty) return;
     if (_matchesQueue(rows, player.queue)) {
@@ -440,17 +464,17 @@ class _GuessPlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playback = tracks.isEmpty
-        ? (queue: <Track>[], playing: false, loading: false)
+        ? (radio: false, playing: false, loading: false)
         : context.select<
             PlayerStore,
-            ({List<Track> queue, bool playing, bool loading})>(
+            ({bool radio, bool playing, bool loading})>(
             (player) => (
-              queue: player.queue,
+              radio: player.activeSource?.id == 'guess-you-like',
               playing: player.playing,
               loading: player.loading,
             ),
           );
-    final active = _matchesQueue(tracks, playback.queue);
+    final active = playback.radio;
     final playing = active && playback.playing;
     final loading = active && playback.loading;
     return InkWell(
