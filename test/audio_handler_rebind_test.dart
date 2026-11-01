@@ -107,7 +107,7 @@ void main() {
     expect(state.controls.first.customAction?.name, 'toggleFavorite');
     expect(state.controls.first.androidIcon, 'drawable/ic_favorite_border');
     expect(state.controls.first.label, '收藏');
-    expect(state.androidCompactActionIndices, [0, 1, 2]);
+    expect(state.androidCompactActionIndices, [1, 2, 3]);
 
     await handler.customAction('toggleFavorite');
 

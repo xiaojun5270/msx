@@ -74,10 +74,10 @@ class MusixAudioHandler extends BaseAudioHandler {
         MediaAction.skipToNext,
         MediaAction.skipToPrevious,
       },
-      // Android 13+ derives the five lock-screen slots from the playback
-      // actions above. Older versions index only the native notification
-      // actions (the custom favorite action is not part of that list).
-      androidCompactActionIndices: const [0, 1, 2],
+      // The patched Android notification keeps the custom favorite action at
+      // index 0. Compact notifications retain the three transport controls;
+      // ColorOS lock screens can use the full action list and show favorite.
+      androidCompactActionIndices: const [1, 2, 3],
       processingState: processingMap[engine.processingState]!,
       playing: playing,
       updatePosition: engine.position,

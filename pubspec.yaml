@@ -21,7 +21,10 @@ dependencies:
   # Audio playback — replaces AVPlayer + custom resource loader.
   just_audio: ^0.9.42
   audio_session: ^0.1.21
-  audio_service: ^0.18.15
+  # Local patch keeps custom controls in the notification action list for
+  # ColorOS lock-screen players while retaining MediaSession actions.
+  audio_service:
+    path: third_party/audio_service
 
   # Image loading with cookie header injection — replaces Kingfisher.
   cached_network_image: ^3.4.1
