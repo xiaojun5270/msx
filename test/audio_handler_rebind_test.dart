@@ -30,18 +30,31 @@ class _Store extends ChangeNotifier implements PlayerStore {
   @override
   AudioPlayer engine;
   final changes = StreamController<AudioPlayer>.broadcast(sync: true);
+  final favorites = StreamController<bool>.broadcast(sync: true);
+  bool _favorited = false;
+  int favoriteToggleCount = 0;
+
   _Store(this.engine);
+
   @override
   Stream<AudioPlayer> get engineChanges => changes.stream;
   @override
-  bool get favorited => false;
+  bool get favorited => _favorited;
   @override
-  Stream<bool> get favoriteChanges => const Stream.empty();
+  Stream<bool> get favoriteChanges => favorites.stream;
   @override
   Stream<MediaItem?> get mediaItemChanges => const Stream.empty();
+
   void replace(AudioPlayer next) {
     engine = next;
     changes.add(next);
+  }
+
+  @override
+  Future<void> toggleFavorite([dynamic item]) async {
+    favoriteToggleCount += 1;
+    _favorited = !_favorited;
+    favorites.add(_favorited);
   }
 
   @override
@@ -74,6 +87,38 @@ void main() {
     await old.events.close();
     await next.events.close();
     await store.changes.close();
+    await store.favorites.close();
+    store.dispose();
+  });
+
+  test('lock-screen favorite action toggles its state and icon', () async {
+    final engine = _Engine();
+    final store = _Store(engine);
+    final handler = MusixAudioHandler(store);
+
+    engine.emit();
+    var state = handler.playbackState.value;
+    expect(state.controls.map((control) => control.action), [
+      MediaAction.custom,
+      MediaAction.skipToPrevious,
+      MediaAction.play,
+      MediaAction.skipToNext,
+    ]);
+    expect(state.controls.first.customAction?.name, 'toggleFavorite');
+    expect(state.controls.first.androidIcon, 'drawable/ic_favorite_border');
+    expect(state.controls.first.label, '收藏');
+    expect(state.androidCompactActionIndices, [0, 1, 2]);
+
+    await handler.customAction('toggleFavorite');
+
+    state = handler.playbackState.value;
+    expect(store.favoriteToggleCount, 1);
+    expect(state.controls.first.androidIcon, 'drawable/ic_favorite_filled');
+    expect(state.controls.first.label, '取消收藏');
+
+    await engine.events.close();
+    await store.changes.close();
+    await store.favorites.close();
     store.dispose();
   });
 }
