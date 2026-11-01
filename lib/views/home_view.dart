@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -390,7 +391,7 @@ class _HomeViewState extends State<HomeView> {
   }
 }
 
-class _GuessPlaylistCard extends StatelessWidget {
+class _GuessPlaylistCard extends StatefulWidget {
   final List<Track> tracks;
   final GuessFeed? feed;
   final double width;
@@ -402,6 +403,32 @@ class _GuessPlaylistCard extends StatelessWidget {
     required this.height,
   });
 
+  @override
+  State<_GuessPlaylistCard> createState() => _GuessPlaylistCardState();
+}
+
+class _GuessPlaylistCardState extends State<_GuessPlaylistCard> {
+  /// Idle-cover rotation: while the shelf is not the active playback source,
+  /// the card cycles through the recommendation covers so it does not sit on
+  /// the same artwork every time the app opens. A random start index makes
+  /// each launch look different.
+  late final Timer _rotateTimer;
+  int _rotateIndex = Random().nextInt(12);
+
+  @override
+  void initState() {
+    super.initState();
+    _rotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) setState(() => _rotateIndex++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _rotateTimer.cancel();
+    super.dispose();
+  }
+
   bool _matchesQueue(List<Track> source, List<Track> queue) {
     if (queue.isEmpty || queue.length > source.length) return false;
     for (var i = 0; i < queue.length; i++) {
@@ -412,8 +439,8 @@ class _GuessPlaylistCard extends StatelessWidget {
 
   Future<void> _togglePlayback(BuildContext context) async {
     final player = context.read<PlayerStore>();
-    var rows = tracks;
-    if (feed != null) {
+    var rows = widget.tracks;
+    if (widget.feed != null) {
       // 电台式播放：每次播放/下一首都向服务端随机取一首（只保留播放过的），
       // 队列随之逐首增长，而不是把固定列表装进队列洗牌。
       if (player.activeSource?.id == 'guess-you-like') {
@@ -425,9 +452,9 @@ class _GuessPlaylistCard extends StatelessWidget {
           if (avoidKey != null) avoidKey,
           ...player.queue.map((track) => track.key),
         };
-        return feed!.fetchRandom(avoidKeys: avoid);
+        return widget.feed!.fetchRandom(avoidKeys: avoid);
       };
-      final first = await feed!.fetchRandom();
+      final first = await widget.feed!.fetchRandom();
       if (first == null) return;
       await player.replaceQueue(
         [first],
@@ -463,6 +490,9 @@ class _GuessPlaylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tracks = widget.tracks;
+    final width = widget.width;
+    final height = widget.height;
     final playback = tracks.isEmpty
         ? (radio: false, playing: false, loading: false, cover: null as String?)
         : context.select<
@@ -478,7 +508,16 @@ class _GuessPlaylistCard extends StatelessWidget {
     final active = playback.radio;
     final playing = active && playback.playing;
     final loading = active && playback.loading;
-    final cover = active ? playback.cover : null;
+    final idleCovers = tracks
+        .map((track) => track.cover)
+        .whereType<String>()
+        .where((cover) => cover.isNotEmpty)
+        .toList();
+    // 未播放：从推荐列表轮换封面；正在播放：跟随当前歌曲封面。
+    final idleCover = idleCovers.isEmpty
+        ? null
+        : idleCovers[_rotateIndex % idleCovers.length];
+    final cover = active ? playback.cover : idleCover;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () => _togglePlayback(context),
