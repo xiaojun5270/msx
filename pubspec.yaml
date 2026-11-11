@@ -38,6 +38,8 @@ dependencies:
   # Local persistence — replaces SwiftData AppPrefs + caches.
   shared_preferences: ^2.3.2
   path_provider: ^2.1.4
+  # Open downloaded APK with the system package installer (OTA updates).
+  open_filex: ^4.4.0
 
   # Deep links (musicx://) — replaces onOpenURL.
   app_links: ^6.3.2

@@ -7,10 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../models/models.dart';
+import '../services/app_update.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
@@ -19,6 +21,7 @@ import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
 import 'route_page.dart';
+import 'glass_controls.dart' show MusicMenuAction, showMusicGlassSheet;
 import 'glass_surfaces.dart';
 
 // ===========================================================================
@@ -287,6 +290,10 @@ class _SettingsViewState extends State<SettingsView> {
   String get _appVersion => const String.fromEnvironment(
       'APP_DISPLAY_VERSION', defaultValue: '0.7.8(001)');
 
+  Future<void> _checkForUpdate() async {
+    await showMusicGlassSheet(context, const _UpdateSheet());
+  }
+
   String get _serverSubtitle {
     final uri = Uri.tryParse(context.read<SessionStore>().baseURL);
     if (uri != null && uri.host.isNotEmpty) {
@@ -401,6 +408,9 @@ class _SettingsViewState extends State<SettingsView> {
               _divider(),
               _aboutRow(Icons.phone_iphone, '客户端', '', _appVersion,
                   const Color(0xFF598CF2)),
+              _divider(),
+              _navRow(Icons.system_update, '检查更新', '通过 GitHub Releases 在线升级',
+                  const Color(0xFF34C759), _checkForUpdate),
             ],
           ),
           const SizedBox(height: 8),
@@ -2647,6 +2657,223 @@ class _GlassMaterialRowState extends State<_GlassMaterialRow> {
             onTap: () => _pick(material),
           ),
       ],
+    );
+  }
+}
+
+// ===========================================================================
+// 在线升级 — check GitHub Releases, download through accelerator mirrors and
+// hand the APK to the system package installer.
+// ===========================================================================
+
+enum _UpdatePhase { checking, upToDate, available, downloading, failed }
+
+class _UpdateSheet extends StatefulWidget {
+  const _UpdateSheet();
+
+  @override
+  State<_UpdateSheet> createState() => _UpdateSheetState();
+}
+
+class _UpdateSheetState extends State<_UpdateSheet> {
+  _UpdatePhase _phase = _UpdatePhase.checking;
+  ReleaseInfo? _release;
+  String? _error;
+  String? _route;
+  double _progress = 0;
+  bool _cancelled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    setState(() {
+      _phase = _UpdatePhase.checking;
+      _error = null;
+    });
+    final info = await AppUpdateService.fetchLatest();
+    if (!mounted) return;
+    if (info == null) {
+      setState(() {
+        _phase = _UpdatePhase.failed;
+        _error = '无法连接 GitHub，请检查网络后重试';
+      });
+      return;
+    }
+    if (!AppUpdateService.isNewer(info.displayVersion)) {
+      setState(() => _phase = _UpdatePhase.upToDate);
+      return;
+    }
+    setState(() {
+      _release = info;
+      _phase = _UpdatePhase.available;
+    });
+  }
+
+  Future<void> _download() async {
+    final url = _release?.apkUrl;
+    if (url == null) return;
+    _cancelled = false;
+    setState(() {
+      _phase = _UpdatePhase.downloading;
+      _progress = 0;
+      _route = null;
+    });
+    try {
+      final file = await AppUpdateService.downloadApk(
+        url,
+        onProgress: (progress, route) {
+          if (!mounted) return;
+          setState(() {
+            _progress = progress;
+            _route = route;
+          });
+        },
+        cancelled: () => _cancelled,
+      );
+      if (!mounted) return;
+      final result = await OpenFilex.open(file.path,
+          type: 'application/vnd.android.package-archive');
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      if (result.type != ResultType.done) {
+        context.read<UIStore>().notify('无法启动安装器：${result.message}');
+      } else {
+        context.read<UIStore>().notify('已下载完成，请在系统弹窗中确认安装');
+      }
+    } on UpdateCancelled {
+      if (!mounted) return;
+      setState(() => _phase = _UpdatePhase.available);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _UpdatePhase.failed;
+        _error = '下载失败：$error';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('检查更新',
+              style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 18),
+          switch (_phase) {
+            _UpdatePhase.checking => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 28),
+                child: Column(children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 14),
+                  Text('正在连接 GitHub Releases…',
+                      style: TextStyle(color: scheme.onSurfaceVariant,
+                          fontSize: 13)),
+                ]),
+              ),
+            _UpdatePhase.failed => Column(children: [
+                Text(_error ?? '检查失败',
+                    style: TextStyle(color: scheme.error, fontSize: 14)),
+                const SizedBox(height: 16),
+                FilledButton.tonal(
+                    onPressed: _fetch, child: const Text('重试')),
+              ]),
+            _UpdatePhase.upToDate => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 22),
+                child: Column(children: [
+                  Icon(Icons.check_circle_outline,
+                      color: const Color(0xFF34C759), size: 44),
+                  const SizedBox(height: 10),
+                  Text('已是最新版本 ${AppUpdateService.currentVersion}',
+                      style: TextStyle(color: scheme.onSurface, fontSize: 15)),
+                ]),
+              ),
+            _UpdatePhase.available => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('发现新版本 ${_release!.displayVersion}',
+                      style: TextStyle(
+                          color: scheme.onSurface,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('当前版本 ${AppUpdateService.currentVersion}',
+                      style: TextStyle(color: scheme.onSurfaceVariant,
+                          fontSize: 13)),
+                  if (_release!.body.trim().isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 160),
+                      child: SingleChildScrollView(
+                        child: Text(_release!.body.trim(),
+                            style: TextStyle(
+                                color: scheme.onSurfaceVariant, fontSize: 13)),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  FilledButton(
+                      onPressed: _download,
+                      style: FilledButton.styleFrom(
+                          backgroundColor: scheme.primary,
+                          minimumSize: const Size.fromHeight(46)),
+                      child: Text('下载并安装',
+                          style: TextStyle(
+                              color: scheme.onPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600))),
+                ],
+              ),
+            _UpdatePhase.downloading => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(
+                        child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                          value: _progress <= 0 ? null : _progress,
+                          minHeight: 6,
+                          color: scheme.primary),
+                    )),
+                    const SizedBox(width: 12),
+                    Text(_progress > 0
+                        ? '${(_progress * 100).floor()}%'
+                        : '连接中',
+                        style: TextStyle(
+                            color: scheme.onSurface,
+                            fontSize: 13,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ])),
+                  ]),
+                  const SizedBox(height: 8),
+                  if (_route != null)
+                    Text('线路：$_route（失败自动切换）',
+                        style: TextStyle(
+                            color: scheme.onSurfaceVariant, fontSize: 11.5)),
+                  const SizedBox(height: 14),
+                  FilledButton.tonal(
+                      onPressed: () => _cancelled = true,
+                      style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(44)),
+                      child: const Text('取消下载')),
+                ],
+              ),
+          },
+        ],
+      ),
     );
   }
 }
