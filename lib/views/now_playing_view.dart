@@ -2,12 +2,14 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
+import '../theme/player_glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -95,19 +97,15 @@ class _NowPlayingViewState extends State<NowPlayingView> {
         height: 48,
         child: Row(
           children: [
-            GestureDetector(
-              onTap: () => player.setNowPlayingOpen(false),
-              child: Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.keyboard_arrow_down,
-                    color: Colors.white, size: 26),
-              ),
+            GlassIconButton(
+              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+              onPressed: () => player.setNowPlayingOpen(false),
+              size: 44,
+              iconSize: 24,
+              semanticLabel: '收起播放页',
+              useOwnLayer: true,
+              quality: GlassQuality.standard,
+              settings: playerGlassSettings(context).copyWith(blur: 12),
             ),
             const Spacer(),
             const _MoreMenu(),
@@ -437,6 +435,7 @@ class _MoreMenu extends StatelessWidget {
     return MusicActionsMenu(
       title: track.title,
       triggerColor: Colors.white,
+      glassTrigger: true,
       actions: [
         MusicMenuAction('换源', Icons.swap_horiz, () => ui.openSource(track)),
         MusicMenuAction(
