@@ -146,31 +146,20 @@ class _MiniPlayerState extends State<MiniPlayer> {
                 ),
               ),
             ),
-            _chipButton(context,
-                tooltip: favorited ? '取消收藏' : '收藏',
-                icon: favorited
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                color: favorited ? MX.ember : null,
-                iconSize: 21,
-                size: 40,
-                onPressed: () => player.toggleFavorite()),
-            _chipButton(context,
-                tooltip: loading ? '取消加载' : (playing ? '暂停' : '播放'),
-                icon: loading
-                    ? Icons.refresh_rounded
-                    : (playing
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded),
-                iconSize: 24,
-                size: 40,
-                onPressed: () => player.toggle()),
-            _chipButton(context,
-                tooltip: '播放队列',
-                icon: Icons.queue_music_rounded,
-                iconSize: 21,
-                size: 40,
-                onPressed: () => context.read<UIStore>().openQueue()),
+            _compactButton(
+              tooltip: favorited ? '取消收藏' : '收藏',
+              icon: favorited
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              color: favorited ? MX.ember : MX.fg,
+              onPressed: () => player.toggleFavorite(),
+            ),
+            _compactPlayButton(player, playing, loading),
+            _compactButton(
+              tooltip: '播放队列',
+              icon: Icons.queue_music_rounded,
+              onPressed: () => context.read<UIStore>().openQueue(),
+            ),
           ],
         ),
       ),
@@ -250,30 +239,32 @@ class _MiniPlayerState extends State<MiniPlayer> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _chipButton(context,
-                    tooltip: favorited ? '取消收藏' : '收藏',
-                    icon: favorited
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: favorited ? MX.ember : null,
-                    iconSize: 22,
-                    onPressed: () => player.toggleFavorite()),
-                _chipButton(context,
-                    tooltip: '上一首',
-                    icon: Icons.skip_previous_rounded,
-                    iconSize: 28,
-                    onPressed: () => player.prev()),
+                _iconButton(
+                  tooltip: favorited ? '取消收藏' : '收藏',
+                  icon: favorited
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: favorited ? MX.ember : MX.fg,
+                  onPressed: () => player.toggleFavorite(),
+                ),
+                _iconButton(
+                  tooltip: '上一首',
+                  icon: Icons.skip_previous_rounded,
+                  iconSize: 30,
+                  onPressed: () => player.prev(),
+                ),
                 _playButton(context, player, playing, loading),
-                _chipButton(context,
-                    tooltip: '下一首',
-                    icon: Icons.skip_next_rounded,
-                    iconSize: 28,
-                    onPressed: () => player.next()),
-                _chipButton(context,
-                    tooltip: '播放队列',
-                    icon: Icons.queue_music_rounded,
-                    iconSize: 22,
-                    onPressed: () => context.read<UIStore>().openQueue()),
+                _iconButton(
+                  tooltip: '下一首',
+                  icon: Icons.skip_next_rounded,
+                  iconSize: 30,
+                  onPressed: () => player.next(),
+                ),
+                _iconButton(
+                  tooltip: '播放队列',
+                  icon: Icons.queue_music_rounded,
+                  onPressed: () => context.read<UIStore>().openQueue(),
+                ),
               ],
             ),
           ),
@@ -306,38 +297,44 @@ class _MiniPlayerState extends State<MiniPlayer> {
     );
   }
 
-  /// Frosted disc behind secondary transport controls: the panel glass is
-  /// translucent, so busy page content behind it otherwise smears thin line
-  /// icons. The chip guarantees uniform contrast over any backdrop.
-  Widget _chipButton(
-    BuildContext context, {
+  Widget _compactPlayButton(PlayerStore player, bool playing, bool loading) {
+    return SizedBox(
+      width: 42,
+      height: 48,
+      child: IconButton(
+        tooltip: loading ? '取消加载' : (playing ? '暂停' : '播放'),
+        padding: EdgeInsets.zero,
+        onPressed: () => player.toggle(),
+        icon: loading
+            ? SizedBox(
+                width: 21,
+                height: 21,
+                child: CircularProgressIndicator(strokeWidth: 2, color: MX.fg),
+              )
+            : Icon(
+                playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: MX.fg,
+                size: 31,
+              ),
+      ),
+    );
+  }
+
+  Widget _compactButton({
     required String tooltip,
     required IconData icon,
     required VoidCallback onPressed,
     Color? color,
-    double iconSize = 24,
-    double size = 44,
   }) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withValues(alpha: 0.10)
-            : Colors.white.withValues(alpha: 0.42),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: dark ? 0.12 : 0.55),
-          width: 0.6,
-        ),
-      ),
+    return SizedBox(
+      width: 40,
+      height: 48,
       child: IconButton(
         tooltip: tooltip,
-        onPressed: onPressed,
         padding: EdgeInsets.zero,
+        onPressed: onPressed,
         color: color ?? MX.fg,
-        iconSize: iconSize,
+        iconSize: 27,
         icon: Icon(icon),
       ),
     );
@@ -378,6 +375,23 @@ class _MiniPlayerState extends State<MiniPlayer> {
                 size: 28,
               ),
       ),
+    );
+  }
+
+  Widget _iconButton({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+    Color? color,
+    double iconSize = 25,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      color: color ?? MX.fg,
+      iconSize: iconSize,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(icon),
     );
   }
 
