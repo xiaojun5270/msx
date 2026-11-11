@@ -14,6 +14,7 @@ import '../models/models.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
+import '../theme/player_glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
@@ -601,6 +602,8 @@ class _SettingsViewState extends State<SettingsView> {
               ],
             ),
           ),
+          _divider(),
+          _GlassMaterialRow(ui: ui, session: session),
           _divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -2541,4 +2544,109 @@ class _CustomSourcesViewState extends State<CustomSourcesView> {
           ],
         ),
       );
+}
+
+// ===========================================================================
+// 界面材质 — frosted (毛玻璃) vs liquid glass (液态玻璃) picker.
+// Mirrors the iOS app's floating glass menu: the current material carries a
+// trailing check, the selection applies immediately and persists locally.
+// ===========================================================================
+
+class _GlassMaterialRow extends StatefulWidget {
+  final UIStore ui;
+  final SessionStore session;
+  const _GlassMaterialRow({required this.ui, required this.session});
+
+  @override
+  State<_GlassMaterialRow> createState() => _GlassMaterialRowState();
+}
+
+class _GlassMaterialRowState extends State<_GlassMaterialRow> {
+  final _controller = GlassMenuController();
+  LocalHistoryEntry? _history;
+  bool _disposing = false;
+
+  void _onClose() {
+    final history = _history;
+    _history = null;
+    history?.remove();
+  }
+
+  void _toggle() {
+    if (_controller.isOpen) {
+      _controller.close();
+      return;
+    }
+    _history = LocalHistoryEntry(onRemove: () {
+      _history = null;
+      if (!_disposing) _controller.close();
+    });
+    ModalRoute.of(context)?.addLocalHistoryEntry(_history!);
+    _controller.open();
+  }
+
+  @override
+  void dispose() {
+    _disposing = true;
+    _onClose();
+    super.dispose();
+  }
+
+  void _pick(GlassMaterial material) {
+    _controller.close();
+    widget.ui.setGlassMaterial(material, widget.session.local);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GlassMenu(
+      controller: _controller,
+      onClose: _onClose,
+      autoAdjustToScreen: true,
+      menuPadding: const EdgeInsets.all(8),
+      menuWidth: 200,
+      menuBorderRadius: 20,
+      itemBorderRadius: 12,
+      menuHeight: 2 * 48 + 16,
+      quality: GlassQuality.standard,
+      settings: playerGlassSettings(context).copyWith(blur: 18),
+      triggerBuilder: (_, __) => InkWell(
+        onTap: _toggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.texture, size: 16, color: MX.fg),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text('界面材质',
+                      style: TextStyle(color: MX.fg, fontSize: 15))),
+              Text(widget.ui.glassMaterial.title,
+                  style: TextStyle(color: MX.mute, fontSize: 13)),
+              const SizedBox(width: 2),
+              Icon(Icons.expand_more, color: MX.mute, size: 18),
+            ],
+          ),
+        ),
+      ),
+      items: [
+        for (final material in GlassMaterial.values)
+          GlassMenuItem(
+            height: 48,
+            title: material.title,
+            icon: Icon(material == GlassMaterial.frosted
+                ? Icons.blur_on
+                : Icons.water_drop_outlined),
+            iconColor: scheme.onSurface,
+            titleStyle: TextStyle(color: scheme.onSurface, fontSize: 15),
+            trailing: widget.ui.glassMaterial == material
+                ? Icon(Icons.check_rounded, size: 20, color: scheme.primary)
+                : null,
+            semanticsChecked: widget.ui.glassMaterial == material,
+            onTap: () => _pick(material),
+          ),
+      ],
+    );
+  }
 }

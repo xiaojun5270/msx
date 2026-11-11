@@ -30,7 +30,7 @@ dependencies:
   cached_network_image: ^3.4.1
 
   # iOS-style liquid glass bottom navigation.
-  liquid_glass_widgets: 1.10.0
+  liquid_glass_widgets: 1.17.1
 
   # Average-color artwork theming — replaces CoreImage CIAreaAverage.
   palette_generator: ^0.3.3+5

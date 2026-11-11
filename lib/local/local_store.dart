@@ -20,6 +20,7 @@ class AppPrefs {
   int queueIndex;
   String appearanceMode;
   String themeAccent;
+  String glassMaterial;
   String backgroundImageUrls;
 
   AppPrefs({
@@ -36,6 +37,7 @@ class AppPrefs {
     this.queueIndex = -1,
     this.appearanceMode = 'system',
     this.themeAccent = 'coral',
+    this.glassMaterial = 'liquid',
     this.backgroundImageUrls = '',
   });
 }
@@ -61,6 +63,7 @@ class LocalStore {
   static const _kQueueIndex = 'queueIndex';
   static const _kAppearance = 'appearanceMode';
   static const _kAccent = 'themeAccent';
+  static const _kGlassMaterial = 'glassMaterial';
   static const _kBackgroundImageUrls = 'backgroundImageUrls';
   static const _kSearchTerms = 'searchTerms'; // JSON list of {text, ts}
 
@@ -83,6 +86,7 @@ class LocalStore {
       queueIndex: _sp.getInt(_kQueueIndex) ?? -1,
       appearanceMode: _sp.getString(_kAppearance) ?? 'system',
       themeAccent: _sp.getString(_kAccent) ?? 'coral',
+      glassMaterial: _sp.getString(_kGlassMaterial) ?? 'liquid',
       backgroundImageUrls: _sp.getString(_kBackgroundImageUrls) ?? '',
     );
     ThemeAccent.current = themeAccent;
@@ -165,6 +169,14 @@ class LocalStore {
     prefs.themeAccent = accent.name;
     ThemeAccent.current = accent;
     _sp.setString(_kAccent, accent.name);
+  }
+
+  GlassMaterial get glassMaterial =>
+      GlassMaterial.fromRaw(prefs.glassMaterial);
+
+  void setGlassMaterial(GlassMaterial material) {
+    prefs.glassMaterial = material.name;
+    _sp.setString(_kGlassMaterial, material.name);
   }
 
   void setBackgroundImageUrls(String value) {

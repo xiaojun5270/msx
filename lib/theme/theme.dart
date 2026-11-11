@@ -9,6 +9,31 @@ class MXBrightness {
 
 Color _dyn(Color light, Color dark) => MXBrightness.isDark ? dark : light;
 
+/// Interface material for the app chrome.
+///
+/// `frosted` is the classic Gaussian-blur backdrop (毛玻璃): the surface only
+/// blurs and tints what is behind it. `liquid` is the refractive lens
+/// (液态玻璃): the surface bends and slightly disperses the backdrop, following
+/// the sampled geometry through the shader.
+enum GlassMaterial {
+  frosted,
+  liquid;
+
+  String get id => name;
+
+  String get title {
+    switch (this) {
+      case GlassMaterial.frosted:
+        return '毛玻璃';
+      case GlassMaterial.liquid:
+        return '液态玻璃';
+    }
+  }
+
+  static GlassMaterial fromRaw(String? raw) => GlassMaterial.values
+      .firstWhere((m) => m.name == raw, orElse: () => GlassMaterial.liquid);
+}
+
 /// Appearance mode — mirrors Swift `AppearanceMode`.
 enum AppearanceMode {
   system,

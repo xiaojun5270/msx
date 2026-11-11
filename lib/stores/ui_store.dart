@@ -26,6 +26,7 @@ class UIStore extends ChangeNotifier {
 
   AppearanceMode appearance = AppearanceMode.system;
   ThemeAccent themeAccent = ThemeAccent.coral;
+  GlassMaterial glassMaterial = GlassMaterial.liquid;
   String backgroundImageUrls = '';
   String? backgroundImageUrl;
   int _backgroundIndex = -1;
@@ -96,6 +97,7 @@ class UIStore extends ChangeNotifier {
   void loadAppearance(LocalStore local) {
     appearance = local.appearance;
     themeAccent = local.themeAccent;
+    glassMaterial = local.glassMaterial;
     backgroundImageUrls = local.prefs.backgroundImageUrls;
     shuffleBackground(notify: false);
   }
@@ -109,6 +111,13 @@ class UIStore extends ChangeNotifier {
   void setThemeAccent(ThemeAccent accent, LocalStore local) {
     themeAccent = accent;
     local.setThemeAccent(accent);
+    notifyListeners();
+  }
+
+  void setGlassMaterial(GlassMaterial material, LocalStore local) {
+    if (glassMaterial == material) return;
+    glassMaterial = material;
+    local.setGlassMaterial(material);
     notifyListeners();
   }
 
