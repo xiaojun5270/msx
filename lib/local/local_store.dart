@@ -20,7 +20,10 @@ class AppPrefs {
   int queueIndex;
   String appearanceMode;
   String themeAccent;
+  String glassMaterial;
   String backgroundImageUrls;
+  int backgroundBlur;
+  int backgroundOpacity;
 
   AppPrefs({
     this.baseURL = 'http://127.0.0.1:8080',
@@ -36,7 +39,10 @@ class AppPrefs {
     this.queueIndex = -1,
     this.appearanceMode = 'system',
     this.themeAccent = 'coral',
+    this.glassMaterial = 'liquid',
     this.backgroundImageUrls = '',
+    this.backgroundBlur = 0,
+    this.backgroundOpacity = 100,
   });
 }
 
@@ -61,7 +67,11 @@ class LocalStore {
   static const _kQueueIndex = 'queueIndex';
   static const _kAppearance = 'appearanceMode';
   static const _kAccent = 'themeAccent';
+  static const _kGlassMaterial = 'glassMaterial';
   static const _kBackgroundImageUrls = 'backgroundImageUrls';
+  static const _kBackgroundBlur = 'backgroundBlur';
+  static const _kBackgroundOpacity = 'backgroundOpacity';
+  static const _kAppIcon = 'appIcon';
   static const _kSearchTerms = 'searchTerms'; // JSON list of {text, ts}
 
   static const _homePrefix = 'home:';
@@ -83,7 +93,10 @@ class LocalStore {
       queueIndex: _sp.getInt(_kQueueIndex) ?? -1,
       appearanceMode: _sp.getString(_kAppearance) ?? 'system',
       themeAccent: _sp.getString(_kAccent) ?? 'coral',
+      glassMaterial: _sp.getString(_kGlassMaterial) ?? 'liquid',
       backgroundImageUrls: _sp.getString(_kBackgroundImageUrls) ?? '',
+      backgroundBlur: _sp.getInt(_kBackgroundBlur) ?? 0,
+      backgroundOpacity: _sp.getInt(_kBackgroundOpacity) ?? 100,
     );
     ThemeAccent.current = themeAccent;
   }
@@ -167,9 +180,33 @@ class LocalStore {
     _sp.setString(_kAccent, accent.name);
   }
 
+  GlassMaterial get glassMaterial =>
+      GlassMaterial.fromRaw(prefs.glassMaterial);
+
+  void setGlassMaterial(GlassMaterial material) {
+    prefs.glassMaterial = material.name;
+    _sp.setString(_kGlassMaterial, material.name);
+  }
+
   void setBackgroundImageUrls(String value) {
     prefs.backgroundImageUrls = value;
     _sp.setString(_kBackgroundImageUrls, value);
+  }
+
+  void setBackgroundBlur(int value) {
+    prefs.backgroundBlur = value.clamp(0, 40);
+    _sp.setInt(_kBackgroundBlur, prefs.backgroundBlur);
+  }
+
+  void setBackgroundOpacity(int value) {
+    prefs.backgroundOpacity = value.clamp(20, 100);
+    _sp.setInt(_kBackgroundOpacity, prefs.backgroundOpacity);
+  }
+
+  String get appIcon => _sp.getString(_kAppIcon) ?? 'classic';
+
+  void setAppIcon(String id) {
+    _sp.setString(_kAppIcon, id);
   }
 
   // Player queue --------------------------------------------------------------

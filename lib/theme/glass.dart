@@ -10,12 +10,16 @@ class AppBackdrop extends StatelessWidget {
   final Widget child;
   final String? imageUrl;
   final bool enableLiquidGlass;
+  final double backgroundBlur;
+  final double backgroundOpacity;
 
   const AppBackdrop({
     super.key,
     required this.child,
     this.imageUrl,
     this.enableLiquidGlass = false,
+    this.backgroundBlur = 0,
+    this.backgroundOpacity = 1,
   });
 
   @override
@@ -45,13 +49,37 @@ class AppBackdrop extends StatelessWidget {
           ),
         ),
         if (imageUrl != null)
-          CachedNetworkImage(
-            imageUrl: imageUrl!,
-            fit: BoxFit.cover,
-            fadeInDuration: Duration.zero,
-            fadeOutDuration: Duration.zero,
-            useOldImageOnUrlChange: true,
-            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+          Opacity(
+            // Rebuild the whole filtered subtree when tuning changes — the
+            // liquid-glass background source keeps a repaint cache keyed by
+            // the boundary, and in-place updates were not propagating.
+            key: ValueKey(
+                'bg-$imageUrl-${backgroundBlur.toStringAsFixed(1)}-${backgroundOpacity.toStringAsFixed(2)}'),
+            opacity: backgroundOpacity,
+            child: backgroundBlur > 0
+                ? ImageFiltered(
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: backgroundBlur,
+                      sigmaY: backgroundBlur,
+                      tileMode: TileMode.mirror,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      fit: BoxFit.cover,
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  )
+                : CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
           ),
       ],
     );

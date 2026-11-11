@@ -1,9 +1,11 @@
 package com.musix.app
 
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.MediaRouter2
 import android.os.Build
@@ -18,8 +20,21 @@ class MainActivity : AudioServiceActivity() {
     private val audioRouteChannel = "com.musix.app/audio_route"
     private val systemVolumeChannel = "com.musix.app/system_volume"
     private val systemVolumeEvents = "com.musix.app/system_volume_events"
+    private val appIconChannel = "com.musix.app/app_icon"
     private var volumeEventSink: EventChannel.EventSink? = null
     private var volumeReceiverRegistered = false
+
+    /** Launcher icon variants — ids mirror AppIconService in Dart. */
+    private val launcherAliases = linkedMapOf(
+        "classic" to ".LauncherIconClassic",
+        "midnight" to ".LauncherIconMidnight",
+        "sunset" to ".LauncherIconSunset",
+        "mint" to ".LauncherIconMint",
+        "aurora" to ".LauncherIconAurora",
+        "cherry" to ".LauncherIconCherry",
+        "mono" to ".LauncherIconMono",
+        "lime" to ".LauncherIconLime"
+    )
 
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -59,6 +74,23 @@ class MainActivity : AudioServiceActivity() {
                         } else {
                             setMediaVolume(value)
                             result.success(mediaVolume())
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, appIconChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getCurrent" -> result.success(currentLauncherIcon())
+                    "setCurrent" -> {
+                        val id = call.argument<String>("id")
+                        if (id == null || !launcherAliases.containsKey(id)) {
+                            result.error("invalid_icon", "Unknown icon id", null)
+                        } else {
+                            setCurrentLauncherIcon(id)
+                            result.success(id)
                         }
                     }
                     else -> result.notImplemented()
@@ -139,5 +171,36 @@ class MainActivity : AudioServiceActivity() {
             }
         }
         return false
+    }
+
+    private fun aliasComponent(alias: String) =
+        ComponentName(this, "$packageName$alias")
+
+    private fun currentLauncherIcon(): String {
+        val pm = packageManager
+        for ((id, alias) in launcherAliases) {
+            val state = pm.getComponentEnabledSetting(aliasComponent(alias))
+            if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return id
+        }
+        return "classic"
+    }
+
+    private fun setCurrentLauncherIcon(id: String) {
+        val pm = packageManager
+        for ((aliasId, alias) in launcherAliases) {
+            val component = aliasComponent(alias)
+            val target = if (aliasId == id) {
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            } else {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+            if (pm.getComponentEnabledSetting(component) != target) {
+                pm.setComponentEnabledSetting(
+                    component,
+                    target,
+                    PackageManager.DONT_KILL_APP
+                )
+            }
+        }
     }
 }

@@ -35,7 +35,16 @@ class _OpaquePageBase extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg =
         context.select<UIStore, String?>((store) => store.backgroundImageUrl);
-    return AppBackdrop(imageUrl: bg, child: child);
+    final blur =
+        context.select<UIStore, int>((store) => store.backgroundBlur);
+    final opacity =
+        context.select<UIStore, int>((store) => store.backgroundOpacity);
+    return AppBackdrop(
+      imageUrl: bg,
+      backgroundBlur: blur.toDouble(),
+      backgroundOpacity: opacity / 100,
+      child: child,
+    );
   }
 }
 

@@ -43,3 +43,7 @@ signing-credentials.json
 # Symbolication / obfuscation
 app.*.symbols
 app.*.map.json
+
+# 本地产物 / 工作日志 — 不进仓库
+dist/
+.workbuddy/

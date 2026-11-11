@@ -112,8 +112,16 @@ class MusicActionsMenu extends StatefulWidget {
   final List<MusicMenuAction> actions;
   final String? title;
   final Color? triggerColor;
+
+  /// Render the trigger as a circular glass button instead of a bare icon —
+  /// used on chrome-less surfaces like the Now Playing page.
+  final bool glassTrigger;
   const MusicActionsMenu(
-      {super.key, required this.actions, this.title, this.triggerColor});
+      {super.key,
+      required this.actions,
+      this.title,
+      this.triggerColor,
+      this.glassTrigger = false});
 
   @override
   State<MusicActionsMenu> createState() => _MusicActionsMenuState();
@@ -174,12 +182,24 @@ class _MusicActionsMenuState extends State<MusicActionsMenu> {
           .clamp(0.0, availableHeight),
       quality: GlassQuality.standard,
       settings: playerGlassSettings(context).copyWith(blur: 18),
-      triggerBuilder: (_, __) => IconButton(
-        tooltip: '歌曲操作',
-        onPressed: _toggle,
-        icon: Icon(Icons.more_horiz,
-            color: widget.triggerColor ?? scheme.onSurfaceVariant),
-      ),
+      triggerBuilder: (_, __) => widget.glassTrigger
+          ? GlassIconButton(
+              icon: Icon(Icons.more_horiz,
+                  color: widget.triggerColor ?? scheme.onSurfaceVariant),
+              onPressed: _toggle,
+              size: 44,
+              iconSize: 20,
+              semanticLabel: '歌曲操作',
+              useOwnLayer: true,
+              quality: GlassQuality.standard,
+              settings: playerGlassSettings(context).copyWith(blur: 12),
+            )
+          : IconButton(
+              tooltip: '歌曲操作',
+              onPressed: _toggle,
+              icon: Icon(Icons.more_horiz,
+                  color: widget.triggerColor ?? scheme.onSurfaceVariant),
+            ),
       items: [
         if (widget.title != null)
           Padding(

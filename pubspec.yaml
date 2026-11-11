@@ -30,7 +30,7 @@ dependencies:
   cached_network_image: ^3.4.1
 
   # iOS-style liquid glass bottom navigation.
-  liquid_glass_widgets: 1.10.0
+  liquid_glass_widgets: 1.17.1
 
   # Average-color artwork theming — replaces CoreImage CIAreaAverage.
   palette_generator: ^0.3.3+5
@@ -38,6 +38,8 @@ dependencies:
   # Local persistence — replaces SwiftData AppPrefs + caches.
   shared_preferences: ^2.3.2
   path_provider: ^2.1.4
+  # Open downloaded APK with the system package installer (OTA updates).
+  open_filex: ^4.4.0
 
   # Deep links (musicx://) — replaces onOpenURL.
   app_links: ^6.3.2
@@ -60,3 +62,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/icons/

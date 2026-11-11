@@ -69,6 +69,12 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
         context.select<UIStore, ThemeAccent>((store) => store.themeAccent);
     final backgroundImageUrl =
         context.select<UIStore, String?>((store) => store.backgroundImageUrl);
+    final backgroundBlur =
+        context.select<UIStore, int>((store) => store.backgroundBlur);
+    final backgroundOpacity =
+        context.select<UIStore, int>((store) => store.backgroundOpacity);
+    final glassMaterial =
+        context.select<UIStore, GlassMaterial>((store) => store.glassMaterial);
     ThemeAccent.current = themeAccent;
     MXBrightness.value = switch (appearance) {
       AppearanceMode.light => Brightness.light,
@@ -101,7 +107,9 @@ class _MusixAppState extends State<MusixApp> with WidgetsBindingObserver {
           ),
           child: AppBackdrop(
             imageUrl: backgroundImageUrl,
-            enableLiquidGlass: true,
+            enableLiquidGlass: glassMaterial == GlassMaterial.liquid,
+            backgroundBlur: backgroundBlur.toDouble(),
+            backgroundOpacity: backgroundOpacity / 100,
             child: Material(
               type: MaterialType.transparency,
               child: child ?? const SizedBox.shrink(),

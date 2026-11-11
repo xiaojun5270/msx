@@ -11,14 +11,18 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../models/models.dart';
+import '../services/app_icon.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
+import '../theme/player_glass.dart';
 import '../theme/route.dart';
 import '../theme/theme.dart';
 import 'components.dart';
 import 'route_page.dart';
+import 'glass_controls.dart' show showMusicGlassSheet;
 import 'glass_surfaces.dart';
+import 'update_views.dart';
 
 // ===========================================================================
 // Shared building blocks — mirror the private helpers in Swift SettingsViews.
@@ -286,6 +290,10 @@ class _SettingsViewState extends State<SettingsView> {
   String get _appVersion => const String.fromEnvironment(
       'APP_DISPLAY_VERSION', defaultValue: '0.7.8(001)');
 
+  Future<void> _checkForUpdate() async {
+    await showUpdateSheet(context);
+  }
+
   String get _serverSubtitle {
     final uri = Uri.tryParse(context.read<SessionStore>().baseURL);
     if (uri != null && uri.host.isNotEmpty) {
@@ -400,6 +408,9 @@ class _SettingsViewState extends State<SettingsView> {
               _divider(),
               _aboutRow(Icons.phone_iphone, '客户端', '', _appVersion,
                   const Color(0xFF598CF2)),
+              _divider(),
+              _navRow(Icons.system_update, '检查更新', '通过 GitHub Releases 在线升级',
+                  const Color(0xFF34C759), _checkForUpdate),
             ],
           ),
           const SizedBox(height: 8),
@@ -602,6 +613,10 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ),
           _divider(),
+          _GlassMaterialRow(ui: ui, session: session),
+          _divider(),
+          _AppIconRow(ui: ui, session: session),
+          _divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: Column(
@@ -687,6 +702,27 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 6),
+                _BackgroundTuneRow(
+                  icon: Icons.blur_linear_rounded,
+                  label: '模糊度',
+                  valueText: '${ui.backgroundBlur}px',
+                  value: ui.backgroundBlur.toDouble(),
+                  min: 0,
+                  max: 30,
+                  onChanged: (v) => ui.setBackgroundTune(
+                      v.round(), ui.backgroundOpacity, session.local),
+                ),
+                _BackgroundTuneRow(
+                  icon: Icons.opacity_rounded,
+                  label: '不透明度',
+                  valueText: '${ui.backgroundOpacity}%',
+                  value: ui.backgroundOpacity.toDouble(),
+                  min: 20,
+                  max: 100,
+                  onChanged: (v) => ui.setBackgroundTune(
+                      ui.backgroundBlur, v.round(), session.local),
+                ),
                 const SizedBox(height: 9),
                 Row(
                   children: [
@@ -737,6 +773,67 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         ),
       );
+}
+
+/// Compact slider row for background-image tuning (blur / opacity).
+class _BackgroundTuneRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String valueText;
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChanged;
+
+  const _BackgroundTuneRow({
+    required this.icon,
+    required this.label,
+    required this.valueText,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: MX.mute),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 66,
+          child: Text(label, style: TextStyle(color: MX.fg, fontSize: 13)),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              thumbShape:
+                  const RoundSliderThumbShape(enabledThumbRadius: 8),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              activeTrackColor: MX.ember,
+              inactiveTrackColor: MX.fillStrong,
+              thumbColor: MX.ember,
+              overlayColor: MX.ember.withValues(alpha: 0.14),
+            ),
+            child: Slider(
+              value: value.clamp(min, max),
+              min: min,
+              max: max,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(valueText,
+              textAlign: TextAlign.right,
+              style: TextStyle(color: MX.mute, fontSize: 12.5)),
+        ),
+      ],
+    );
+  }
 }
 
 // ===========================================================================
@@ -2541,4 +2638,313 @@ class _CustomSourcesViewState extends State<CustomSourcesView> {
           ],
         ),
       );
+}
+
+// ===========================================================================
+// 界面材质 — frosted (毛玻璃) vs liquid glass (液态玻璃) picker.
+// Mirrors the iOS app's floating glass menu: the current material carries a
+// trailing check, the selection applies immediately and persists locally.
+// ===========================================================================
+
+class _GlassMaterialRow extends StatefulWidget {
+  final UIStore ui;
+  final SessionStore session;
+  const _GlassMaterialRow({required this.ui, required this.session});
+
+  @override
+  State<_GlassMaterialRow> createState() => _GlassMaterialRowState();
+}
+
+class _GlassMaterialRowState extends State<_GlassMaterialRow> {
+  final _controller = GlassMenuController();
+  LocalHistoryEntry? _history;
+  bool _disposing = false;
+
+  void _onClose() {
+    final history = _history;
+    _history = null;
+    history?.remove();
+  }
+
+  void _toggle() {
+    if (_controller.isOpen) {
+      _controller.close();
+      return;
+    }
+    _history = LocalHistoryEntry(onRemove: () {
+      _history = null;
+      if (!_disposing) _controller.close();
+    });
+    ModalRoute.of(context)?.addLocalHistoryEntry(_history!);
+    _controller.open();
+  }
+
+  @override
+  void dispose() {
+    _disposing = true;
+    _onClose();
+    super.dispose();
+  }
+
+  void _pick(GlassMaterial material) {
+    _controller.close();
+    widget.ui.setGlassMaterial(material, widget.session.local);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GlassMenu(
+      controller: _controller,
+      onClose: _onClose,
+      autoAdjustToScreen: true,
+      menuPadding: const EdgeInsets.all(8),
+      menuWidth: 200,
+      menuBorderRadius: 20,
+      itemBorderRadius: 12,
+      menuHeight: 2 * 48 + 16,
+      quality: GlassQuality.standard,
+      settings: playerGlassSettings(context).copyWith(blur: 18),
+      triggerBuilder: (_, __) => InkWell(
+        onTap: _toggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.texture, size: 16, color: MX.fg),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text('界面材质',
+                      style: TextStyle(color: MX.fg, fontSize: 15))),
+              Text(widget.ui.glassMaterial.title,
+                  style: TextStyle(color: MX.mute, fontSize: 13)),
+              const SizedBox(width: 2),
+              Icon(Icons.expand_more, color: MX.mute, size: 18),
+            ],
+          ),
+        ),
+      ),
+      items: [
+        for (final material in GlassMaterial.values)
+          GlassMenuItem(
+            height: 48,
+            title: material.title,
+            icon: Icon(material == GlassMaterial.frosted
+                ? Icons.blur_on
+                : Icons.water_drop_outlined),
+            iconColor: scheme.onSurface,
+            titleStyle: TextStyle(color: scheme.onSurface, fontSize: 15),
+            trailing: widget.ui.glassMaterial == material
+                ? Icon(Icons.check_rounded, size: 20, color: scheme.primary)
+                : null,
+            semanticsChecked: widget.ui.glassMaterial == material,
+            onTap: () => _pick(material),
+          ),
+      ],
+    );
+  }
+}
+
+
+// ===========================================================================
+// 应用图标 — launcher icon variant picker (activity-alias switching).
+// ===========================================================================
+
+class _AppIconRow extends StatefulWidget {
+  final UIStore ui;
+  final SessionStore session;
+
+  const _AppIconRow({required this.ui, required this.session});
+
+  @override
+  State<_AppIconRow> createState() => _AppIconRowState();
+}
+
+class _AppIconRowState extends State<_AppIconRow> {
+  @override
+  void initState() {
+    super.initState();
+    // Sync with the actually-enabled alias (covers manual reinstalls).
+    AppIconService.currentId(fallback: widget.ui.appIcon)
+        .then((id) {
+      if (mounted && id != widget.ui.appIcon) {
+        widget.ui.setAppIcon(id, widget.session.local);
+      }
+    });
+  }
+
+  void _openPicker() {
+    showMusicGlassSheet(
+        context, _AppIconSheet(ui: widget.ui, session: widget.session));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final variant = AppIconVariant.byId(widget.ui.appIcon);
+    return InkWell(
+      onTap: _openPicker,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Icon(Icons.app_shortcut, size: 16, color: MX.fg),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text('应用图标',
+                    style: TextStyle(color: MX.fg, fontSize: 15))),
+            if (variant != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(variant.previewAsset,
+                      width: 26, height: 26, fit: BoxFit.cover),
+                ),
+              ),
+            Text(variant?.name ?? '经典霓虹',
+                style: TextStyle(color: MX.mute, fontSize: 13)),
+            const SizedBox(width: 2),
+            Icon(Icons.expand_more, color: MX.mute, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppIconSheet extends StatelessWidget {
+  final UIStore ui;
+  final SessionStore session;
+
+  const _AppIconSheet({required this.ui, required this.session});
+
+  Future<void> _pick(BuildContext context, AppIconVariant variant) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await AppIconService.apply(variant.id, ui, session.local);
+    messenger.showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      content: Text('${variant.name} 已应用，桌面图标稍后刷新'),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ui,
+      builder: (context, _) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 12),
+                child: Text('应用图标',
+                    style: TextStyle(
+                        color: MX.fg,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600)),
+              ),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 0.78,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                children: [
+                  for (final variant in AppIconVariant.all)
+                    _AppIconCell(
+                      variant: variant,
+                      selected: ui.appIcon == variant.id,
+                      onTap: () => _pick(context, variant),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text('切换后桌面图标会稍作延迟刷新；应用数据不受影响。',
+                    style: TextStyle(color: MX.mute, fontSize: 11.5)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppIconCell extends StatelessWidget {
+  final AppIconVariant variant;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AppIconCell({
+    required this.variant,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: selected
+                        ? scheme.primary
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(variant.previewAsset,
+                      width: 58, height: 58, fit: BoxFit.cover),
+                ),
+              ),
+              if (selected)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check_rounded,
+                        size: 12, color: scheme.onPrimary),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(variant.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: selected ? scheme.primary : MX.fg,
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
+          Text(variant.subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: MX.mute, fontSize: 10)),
+        ],
+      ),
+    );
+  }
 }

@@ -26,8 +26,12 @@ class UIStore extends ChangeNotifier {
 
   AppearanceMode appearance = AppearanceMode.system;
   ThemeAccent themeAccent = ThemeAccent.coral;
+  GlassMaterial glassMaterial = GlassMaterial.liquid;
   String backgroundImageUrls = '';
   String? backgroundImageUrl;
+  int backgroundBlur = 0;
+  int backgroundOpacity = 100;
+  String appIcon = 'classic';
   int _backgroundIndex = -1;
 
   void notify(String text) {
@@ -96,7 +100,11 @@ class UIStore extends ChangeNotifier {
   void loadAppearance(LocalStore local) {
     appearance = local.appearance;
     themeAccent = local.themeAccent;
+    glassMaterial = local.glassMaterial;
     backgroundImageUrls = local.prefs.backgroundImageUrls;
+    backgroundBlur = local.prefs.backgroundBlur;
+    backgroundOpacity = local.prefs.backgroundOpacity;
+    appIcon = local.appIcon;
     shuffleBackground(notify: false);
   }
 
@@ -112,6 +120,13 @@ class UIStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setGlassMaterial(GlassMaterial material, LocalStore local) {
+    if (glassMaterial == material) return;
+    glassMaterial = material;
+    local.setGlassMaterial(material);
+    notifyListeners();
+  }
+
   bool setBackgroundImageUrls(String raw, LocalStore local) {
     final urls = _parseBackgroundUrls(raw);
     if (raw.trim().isNotEmpty && urls.isEmpty) return false;
@@ -121,6 +136,20 @@ class UIStore extends ChangeNotifier {
     shuffleBackground(notify: false);
     notifyListeners();
     return true;
+  }
+
+  void setBackgroundTune(int blur, int opacity, LocalStore local) {
+    backgroundBlur = blur.clamp(0, 40);
+    backgroundOpacity = opacity.clamp(20, 100);
+    local.setBackgroundBlur(backgroundBlur);
+    local.setBackgroundOpacity(backgroundOpacity);
+    notifyListeners();
+  }
+
+  void setAppIcon(String id, LocalStore local) {
+    appIcon = id;
+    local.setAppIcon(id);
+    notifyListeners();
   }
 
   void shuffleBackground({bool notify = true}) {
