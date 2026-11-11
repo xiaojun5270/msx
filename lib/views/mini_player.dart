@@ -4,6 +4,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../api/auth_box.dart';
+import '../models/track.dart';
 import '../stores/player_store.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
@@ -11,11 +12,16 @@ import 'glass_surfaces.dart';
 import '../theme/theme.dart';
 
 /// Collapsible floating player with artwork refraction and full transport.
+///
+/// Rebuild discipline: the glass shell only rebuilds on discrete state changes
+/// (track / playing / loading / favorited / expanded). The position-driven
+/// progress row lives in [_SeekRow] and rebuilds alone at ~20 Hz, so the
+/// expensive glass panel is not re-rendered every position tick.
 class MiniPlayer extends StatefulWidget {
   const MiniPlayer({super.key});
 
   static const collapsedExtent = 88.0;
-  static const expandedExtent = 174.0;
+  static const expandedExtent = 176.0;
 
   @override
   State<MiniPlayer> createState() => _MiniPlayerState();
@@ -24,22 +30,22 @@ class MiniPlayer extends StatefulWidget {
 class _MiniPlayerState extends State<MiniPlayer> {
   @override
   Widget build(BuildContext context) {
-    final player = context.watch<PlayerStore>();
+    final player = context.read<PlayerStore>();
+    final track = context.select<PlayerStore, Track?>((p) => p.track);
+    final playing = context.select<PlayerStore, bool>((p) => p.playing);
+    final loading = context.select<PlayerStore, bool>((p) => p.loading);
+    final favorited = context.select<PlayerStore, bool>((p) => p.favorited);
     final ui = context.watch<UIStore>();
     final session = context.read<SessionStore>();
-    final track = player.track;
     if (track == null) return const SizedBox.shrink();
 
     final coverUrl = session.api.absolute(track.cover);
     final cookie = AuthBox.shared.combinedCookieHeader();
     final headers = cookie == null ? null : {'Cookie': cookie};
-    final duration = player.duration > 0 ? player.duration : track.duration;
-    final current =
-        duration > 0 ? player.current.clamp(0.0, duration).toDouble() : 0.0;
     final expanded = ui.playerExpanded;
 
     return AnimatedSize(
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       alignment: Alignment.bottomCenter,
       child: Padding(
@@ -53,9 +59,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
           child: MusicGlassPanel(
             refractBackground: true,
             radius: expanded ? 28 : 34,
-            quality: GlassQuality.premium,
+            quality: GlassQuality.standard,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 140),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               child: expanded
@@ -66,8 +72,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
                       track.artistText,
                       coverUrl,
                       headers,
-                      current,
-                      duration,
+                      favorited,
+                      playing,
+                      loading,
                     )
                   : _collapsedPlayer(
                       context,
@@ -76,6 +83,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
                       track.artistText,
                       coverUrl,
                       headers,
+                      favorited,
+                      playing,
+                      loading,
                     ),
             ),
           ),
@@ -91,6 +101,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
     String artist,
     Uri? coverUrl,
     Map<String, String>? headers,
+    bool favorited,
+    bool playing,
+    bool loading,
   ) {
     return SizedBox(
       key: const ValueKey('collapsed-player'),
@@ -134,14 +147,14 @@ class _MiniPlayerState extends State<MiniPlayer> {
               ),
             ),
             _compactButton(
-              tooltip: player.favorited ? '取消收藏' : '收藏',
-              icon: player.favorited
+              tooltip: favorited ? '取消收藏' : '收藏',
+              icon: favorited
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
-              color: player.favorited ? MX.ember : MX.fg,
+              color: favorited ? MX.ember : MX.fg,
               onPressed: () => player.toggleFavorite(),
             ),
-            _compactPlayButton(player),
+            _compactPlayButton(player, playing, loading),
             _compactButton(
               tooltip: '播放队列',
               icon: Icons.queue_music_rounded,
@@ -160,8 +173,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
     String artist,
     Uri? coverUrl,
     Map<String, String>? headers,
-    double current,
-    double duration,
+    bool favorited,
+    bool playing,
+    bool loading,
   ) {
     return Padding(
       key: const ValueKey('expanded-player'),
@@ -218,61 +232,32 @@ class _MiniPlayerState extends State<MiniPlayer> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Text(_time(current),
-                  style: TextStyle(color: MX.dim, fontSize: 10.5)),
-              Expanded(
-                child: SizedBox(
-                  height: 30,
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 2.5,
-                      activeTrackColor: MX.fg.withOpacity(0.82),
-                      inactiveTrackColor: MX.fg.withOpacity(0.16),
-                      thumbColor: MX.fg,
-                      overlayShape:
-                          const RoundSliderOverlayShape(overlayRadius: 12),
-                    ),
-                    child: MusicGlassSlider(
-                      label: '播放进度',
-                      thumbRadius: 4.5,
-                      value: current,
-                      max: duration > 0 ? duration : 1,
-                      onChanged: duration > 0 ? player.seek : null,
-                    ),
-                  ),
-                ),
-              ),
-              Text(_time(duration),
-                  style: TextStyle(color: MX.dim, fontSize: 10.5)),
-            ],
-          ),
+          const SizedBox(height: 4),
+          _SeekRow(player: player),
           SizedBox(
-            height: 46,
+            height: 50,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _iconButton(
-                  tooltip: player.favorited ? '取消收藏' : '收藏',
-                  icon: player.favorited
+                  tooltip: favorited ? '取消收藏' : '收藏',
+                  icon: favorited
                       ? Icons.favorite_rounded
                       : Icons.favorite_border_rounded,
-                  color: player.favorited ? MX.ember : MX.fg,
+                  color: favorited ? MX.ember : MX.fg,
                   onPressed: () => player.toggleFavorite(),
                 ),
                 _iconButton(
                   tooltip: '上一首',
                   icon: Icons.skip_previous_rounded,
-                  iconSize: 29,
+                  iconSize: 30,
                   onPressed: () => player.prev(),
                 ),
-                _playButton(context, player),
+                _playButton(context, player, playing, loading),
                 _iconButton(
                   tooltip: '下一首',
                   icon: Icons.skip_next_rounded,
-                  iconSize: 29,
+                  iconSize: 30,
                   onPressed: () => player.next(),
                 ),
                 _iconButton(
@@ -312,22 +297,22 @@ class _MiniPlayerState extends State<MiniPlayer> {
     );
   }
 
-  Widget _compactPlayButton(PlayerStore player) {
+  Widget _compactPlayButton(PlayerStore player, bool playing, bool loading) {
     return SizedBox(
       width: 42,
       height: 48,
       child: IconButton(
-        tooltip: player.loading ? '取消加载' : (player.playing ? '暂停' : '播放'),
+        tooltip: loading ? '取消加载' : (playing ? '暂停' : '播放'),
         padding: EdgeInsets.zero,
         onPressed: () => player.toggle(),
-        icon: player.loading
+        icon: loading
             ? SizedBox(
                 width: 21,
                 height: 21,
                 child: CircularProgressIndicator(strokeWidth: 2, color: MX.fg),
               )
             : Icon(
-                player.playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 color: MX.fg,
                 size: 31,
               ),
@@ -355,30 +340,39 @@ class _MiniPlayerState extends State<MiniPlayer> {
     );
   }
 
-  Widget _playButton(BuildContext context, PlayerStore player) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+  /// Solid accent disc — high contrast against any glass material, echoing the
+  /// hero card's round play/pause affordance.
+  Widget _playButton(
+      BuildContext context, PlayerStore player, bool playing, bool loading) {
     return Container(
-      width: 46,
-      height: 46,
+      width: 48,
+      height: 48,
       decoration: BoxDecoration(
-        color: MX.fg.withOpacity(dark ? 0.08 : 0.06),
+        color: MX.ember,
         shape: BoxShape.circle,
-        border: Border.all(color: MX.fg.withOpacity(0.62), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: MX.ember.withValues(alpha: 0.32),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: IconButton(
-        tooltip: player.loading ? '取消加载' : (player.playing ? '暂停' : '播放'),
+        tooltip: loading ? '取消加载' : (playing ? '暂停' : '播放'),
         padding: EdgeInsets.zero,
         onPressed: () => player.toggle(),
-        icon: player.loading
+        icon: loading
             ? SizedBox(
                 width: 21,
                 height: 21,
-                child: CircularProgressIndicator(strokeWidth: 2, color: MX.fg),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.2, color: MX.onAccent),
               )
             : Icon(
-                player.playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: MX.fg,
-                size: 30,
+                playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: MX.onAccent,
+                size: 28,
               ),
       ),
     );
@@ -406,6 +400,51 @@ class _MiniPlayerState extends State<MiniPlayer> {
         alignment: Alignment.center,
         child: Icon(Icons.music_note_rounded, color: MX.mute, size: 23),
       );
+}
+
+/// Position-driven row isolated from the glass shell: rebuilds alone on each
+/// position tick so the glass panel never re-renders at playback frequency.
+class _SeekRow extends StatelessWidget {
+  final PlayerStore player;
+  const _SeekRow({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = context.select<PlayerStore, double>((p) => p.current);
+    final duration = context.select<PlayerStore, double>((p) => p.duration);
+    final effective = duration > 0 ? duration : 1.0;
+    return Row(
+      children: [
+        Text(_time(current), style: TextStyle(color: MX.dim, fontSize: 10.5)),
+        Expanded(
+          child: SizedBox(
+            height: 30,
+            // A plain Slider: the glass slider rebuilt its own material on
+            // every 50 ms position tick and its lens thumb read as a smudge
+            // over the frosted panel.
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 2.5,
+                activeTrackColor: MX.ember,
+                inactiveTrackColor: MX.fg.withOpacity(0.18),
+                thumbColor: MX.ember,
+                thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6, elevation: 1.5),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              ),
+              child: Slider(
+                label: '播放进度',
+                value: current.clamp(0.0, effective),
+                max: effective,
+                onChanged: duration > 0 ? player.seek : null,
+              ),
+            ),
+          ),
+        ),
+        Text(_time(duration), style: TextStyle(color: MX.dim, fontSize: 10.5)),
+      ],
+    );
+  }
 
   String _time(double seconds) {
     if (!seconds.isFinite || seconds <= 0) return '0:00';

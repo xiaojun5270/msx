@@ -467,10 +467,10 @@ packages:
     dependency: "direct main"
     description:
       name: liquid_glass_widgets
-      sha256: ea34502c801b7cca96c5bd4848c7169dda3163b0c32752d3a39964e5a45ff6f2
+      sha256: c7873a662ef82baa7fbb557be733b1e1b044cd3038736984b9bc291462087e25
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.10.0"
+    version: "1.17.1"
   logging:
     dependency: transitive
     description:
@@ -535,6 +535,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.1.3"
+  open_filex:
+    dependency: "direct main"
+    description:
+      name: open_filex
+      sha256: "9976da61b6a72302cf3b1efbce259200cd40232643a467aac7370addf94d6900"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.7.0"
   package_config:
     dependency: transitive
     description:

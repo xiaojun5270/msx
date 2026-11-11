@@ -100,7 +100,13 @@ Future<void> main() async {
           maxQuality: GlassQuality.standard,
           initialQuality: GlassQuality.standard,
         ),
-        child: const MusixApp(),
+        // The app was designed around the classic v1.x material. Keep it as
+        // the explicit theme so package-side default restyles (1.17 switched
+        // to GlassStyle.ios27) never silently change the look.
+        child: GlassTheme(
+          data: GlassThemeData.classic(),
+          child: const MusixApp(),
+        ),
       ),
     ),
   );
