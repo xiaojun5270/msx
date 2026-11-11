@@ -31,7 +31,7 @@ void main() {
       final local = await LocalStore.open();
       expect(local.prefs.backgroundBlur, 0);
       expect(local.prefs.backgroundOpacity, 100);
-      expect(local.appIcon, 'classic');
+      expect(local.appIcon, 'liquid');
     });
 
     test('setBackgroundTune persists clamped values', () async {

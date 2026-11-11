@@ -31,7 +31,7 @@ class UIStore extends ChangeNotifier {
   String? backgroundImageUrl;
   int backgroundBlur = 0;
   int backgroundOpacity = 100;
-  String appIcon = 'classic';
+  String appIcon = 'liquid';
   int _backgroundIndex = -1;
 
   void notify(String text) {

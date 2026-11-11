@@ -47,3 +47,4 @@ app.*.map.json
 # 本地产物 / 工作日志 — 不进仓库
 dist/
 .workbuddy/
+icon_previews/

@@ -33,7 +33,21 @@ class MainActivity : AudioServiceActivity() {
         "aurora" to ".LauncherIconAurora",
         "cherry" to ".LauncherIconCherry",
         "mono" to ".LauncherIconMono",
-        "lime" to ".LauncherIconLime"
+        "lime" to ".LauncherIconLime",
+        "wave" to ".LauncherIconWave",
+        "vinyl" to ".LauncherIconVinyl",
+        "headphones" to ".LauncherIconHeadphones",
+        "note" to ".LauncherIconNote",
+        "playglass" to ".LauncherIconPlayglass",
+        "eq" to ".LauncherIconEq",
+        "cassette" to ".LauncherIconCassette",
+        "mic" to ".LauncherIconMic",
+        "pick" to ".LauncherIconPick",
+        "piano" to ".LauncherIconPiano",
+        "speaker" to ".LauncherIconSpeaker",
+        "cd" to ".LauncherIconCd",
+        "radio" to ".LauncherIconRadio",
+        "liquid" to ".LauncherIconLiquid"
     )
 
     private val volumeReceiver = object : BroadcastReceiver() {
@@ -182,7 +196,7 @@ class MainActivity : AudioServiceActivity() {
             val state = pm.getComponentEnabledSetting(aliasComponent(alias))
             if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return id
         }
-        return "classic"
+        return "liquid"
     }
 
     private fun setCurrentLauncherIcon(id: String) {

@@ -203,7 +203,7 @@ class LocalStore {
     _sp.setInt(_kBackgroundOpacity, prefs.backgroundOpacity);
   }
 
-  String get appIcon => _sp.getString(_kAppIcon) ?? 'classic';
+  String get appIcon => _sp.getString(_kAppIcon) ?? 'liquid';
 
   void setAppIcon(String id) {
     _sp.setString(_kAppIcon, id);

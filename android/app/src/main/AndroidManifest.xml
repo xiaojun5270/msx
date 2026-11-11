@@ -9,7 +9,7 @@
     <application
         android:label="MusicX"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_launcher_liquid"
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity
@@ -35,10 +35,10 @@
 
         <!-- Launcher icon variants: switching toggles these aliases via
              PackageManager.setComponentEnabledSetting. Exactly one stays
-             enabled; the classic one is the shipped default. -->
+             enabled; the liquid glass one is the shipped default. -->
         <activity-alias
             android:name=".LauncherIconClassic"
-            android:enabled="true"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_classic"
             android:label="MusicX"
@@ -125,6 +125,176 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_lime"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherIconWave"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_wave"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconVinyl"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_vinyl"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconHeadphones"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_headphones"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconNote"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_note"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconPlayglass"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_playglass"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconEq"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_eq"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherIconCassette"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_cassette"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconMic"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_mic"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconPick"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_pick"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconPiano"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_piano"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconSpeaker"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_speaker"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconCd"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_cd"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconRadio"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_radio"
+            android:label="MusicX"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherIconLiquid"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_liquid"
             android:label="MusicX"
             android:targetActivity=".MainActivity">
             <intent-filter>

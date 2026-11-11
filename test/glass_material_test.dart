@@ -79,7 +79,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('界面材质'), findsOneWidget);
-    expect(find.text('液态玻璃'), findsOneWidget);
+    // 「液态玻璃」也用作应用图标名（默认图标），这里只断言材质行存在。
+    expect(find.text('液态玻璃'), findsWidgets);
 
     await tester.tap(find.text('界面材质'));
     await tester.pump(const Duration(milliseconds: 400));
