@@ -11,7 +11,6 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../models/models.dart';
-import '../services/update_mirror.dart';
 import '../stores/session_store.dart';
 import '../stores/ui_store.dart';
 import '../theme/artwork_color.dart';
@@ -224,9 +223,6 @@ class _SettingsViewState extends State<SettingsView> {
     _backgroundUrls.text =
         context.read<SessionStore>().local.prefs.backgroundImageUrls;
     _bindings = Map.of(context.read<SessionStore>().bindings);
-    // Load the saved download route so the row subtitle is accurate before
-    // the user ever opens the update sheet.
-    UpdateMirrorStore.instance.ensureLoaded();
     WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
   }
 
@@ -413,16 +409,6 @@ class _SettingsViewState extends State<SettingsView> {
               _divider(),
               _navRow(Icons.system_update, '检查更新', '通过 GitHub Releases 在线升级',
                   const Color(0xFF34C759), _checkForUpdate),
-              _divider(),
-              ListenableBuilder(
-                listenable: UpdateMirrorStore.instance,
-                builder: (context, _) => _navRow(
-                    Icons.route,
-                    '更新下载线路',
-                    '当前：${UpdateMirrorStore.instance.selectedMirror.label}',
-                    const Color(0xFF598CF2),
-                    () => showUpdateMirrorSheet(context)),
-              ),
             ],
           ),
           const SizedBox(height: 8),
