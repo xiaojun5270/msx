@@ -400,12 +400,6 @@ class _MiniPlayerState extends State<MiniPlayer> {
         alignment: Alignment.center,
         child: Icon(Icons.music_note_rounded, color: MX.mute, size: 23),
       );
-
-  String _time(double seconds) {
-    if (!seconds.isFinite || seconds <= 0) return '0:00';
-    final total = seconds.floor();
-    return '${total ~/ 60}:${(total % 60).toString().padLeft(2, '0')}';
-  }
 }
 
 /// Position-driven row isolated from the glass shell: rebuilds alone on each
